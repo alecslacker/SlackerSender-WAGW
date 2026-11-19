@@ -36,10 +36,30 @@ func normalizePhoneVariants(phone string) []string {
 	if d == "" {
 		return nil
 	}
+	// Bentuk setara satu nomor Indonesia: 0812… / 62812… / 812…
+	// chat_inboxes.phone menyimpan 62…, sedangkan messages.to menyimpan apa
+	// adanya dari pengirim (08… atau 62…) — pencarian harus mencakup keduanya.
 	variants := []string{d}
-	trimmed := strings.TrimPrefix(d, "0")
-	if trimmed != d && trimmed != "" {
-		variants = append(variants, trimmed)
+	add := func(v string) {
+		if v == "" {
+			return
+		}
+		for _, e := range variants {
+			if e == v {
+				return
+			}
+		}
+		variants = append(variants, v)
+	}
+	switch {
+	case strings.HasPrefix(d, "0") && len(d) > 1:
+		add("62" + d[1:])
+		add(d[1:])
+	case strings.HasPrefix(d, "62") && len(d) > 2:
+		add("0" + d[2:])
+		add(d[2:])
+	default:
+		add(strings.TrimPrefix(d, "0")) // perilaku lama
 	}
 	return variants
 }
