@@ -9,6 +9,7 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { Toggle } from "@/components/Toggle";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
 import SyncWAButton from "@/components/contacts/SyncWAButton";
+import WAGroupIdsButton from "@/components/contacts/WAGroupIdsButton";
 import { useLang } from "@/lib/i18n";
 
 interface Group {
@@ -274,6 +275,7 @@ export default function ContactGroups({ embedded = false }: { embedded?: boolean
         )}
         <div className="flex flex-wrap gap-2 self-start sm:self-auto">
           <SyncWAButton kind="groups" onDone={load} />
+          <WAGroupIdsButton />
           <Button onClick={openAdd} className="gap-1.5">
             <Plus className="w-4 h-4" />
             {t("contactGroups.createGroup")}
