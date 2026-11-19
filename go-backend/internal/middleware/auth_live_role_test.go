@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Aldi1963/wagataway/internal/config"
-	"github.com/Aldi1963/wagataway/internal/database/models"
-	"github.com/Aldi1963/wagataway/internal/rls"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/config"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/rls"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/driver/postgres"

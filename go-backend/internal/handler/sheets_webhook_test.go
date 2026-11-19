@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Aldi1963/wagataway/internal/database"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database"
 )
 
 // TestAutoMigrateCreatesSheetsWebhookTables: AutoMigrate penuh harus membuat

@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Aldi1963/wagataway/internal/security"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/security"
 	"github.com/golang-jwt/jwt/v5"
 )
 

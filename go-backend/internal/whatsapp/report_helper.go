@@ -10,7 +10,7 @@ package whatsapp
 import (
 	"time"
 
-	"github.com/Aldi1963/wagataway/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )

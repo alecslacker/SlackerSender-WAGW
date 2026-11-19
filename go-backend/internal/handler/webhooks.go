@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Aldi1963/wagataway/internal/database/models"
-	"github.com/Aldi1963/wagataway/internal/middleware"
-	"github.com/Aldi1963/wagataway/internal/rls"
-	"github.com/Aldi1963/wagataway/internal/security"
-	"github.com/Aldi1963/wagataway/internal/whatsapp"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/middleware"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/rls"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/security"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/whatsapp"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )

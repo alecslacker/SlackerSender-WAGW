@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Aldi1963/wagataway/internal/security"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/security"
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"

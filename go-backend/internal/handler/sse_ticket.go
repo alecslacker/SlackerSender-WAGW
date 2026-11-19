@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"github.com/Aldi1963/wagataway/internal/middleware"
-	"github.com/Aldi1963/wagataway/internal/sseauth"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/middleware"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/sseauth"
 	"github.com/gin-gonic/gin"
 )
 

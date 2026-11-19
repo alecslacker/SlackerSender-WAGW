@@ -3,10 +3,10 @@ package worker
 import (
 	"time"
 
-	"github.com/Aldi1963/wagataway/internal/database/models"
-	"github.com/Aldi1963/wagataway/internal/drip"
-	"github.com/Aldi1963/wagataway/internal/quota"
-	"github.com/Aldi1963/wagataway/internal/whatsapp"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/drip"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/quota"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/whatsapp"
 	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"

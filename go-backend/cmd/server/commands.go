@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Aldi1963/wagataway/internal/config"
-	"github.com/Aldi1963/wagataway/internal/database"
-	"github.com/Aldi1963/wagataway/internal/rls"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/config"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/rls"
 )
 
 const usage = `Pemakaian:

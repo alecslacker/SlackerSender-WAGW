@@ -3,7 +3,7 @@
 //
 // Usage:
 //
-//	import _ "github.com/Aldi1963/wagataway/internal/rls" // registers the pgx-rls driver
+//	import _ "github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/rls" // registers the pgx-rls driver
 //
 //	db, err := gorm.Open(postgres.New(postgres.Config{
 //		DriverName: rls.DriverName, // "pgx-rls"

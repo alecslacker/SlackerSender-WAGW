@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Aldi1963/wagataway/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
 )
 
 func mkRecipients(phones ...string) []models.BulkJobRecipient {

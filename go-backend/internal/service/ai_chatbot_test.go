@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"github.com/Aldi1963/wagataway/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
 )
 
 func TestScoreFAQExactAndKeyword(t *testing.T) {

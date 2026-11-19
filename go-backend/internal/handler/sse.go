@@ -5,8 +5,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/Aldi1963/wagataway/internal/middleware"
-	"github.com/Aldi1963/wagataway/internal/realtime"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/middleware"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/realtime"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )

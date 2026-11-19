@@ -8,12 +8,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Aldi1963/wagataway/internal/config"
-	"github.com/Aldi1963/wagataway/internal/database"
-	"github.com/Aldi1963/wagataway/internal/handler"
-	"github.com/Aldi1963/wagataway/internal/rls"
-	"github.com/Aldi1963/wagataway/internal/whatsapp"
-	"github.com/Aldi1963/wagataway/internal/worker"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/config"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/handler"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/rls"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/whatsapp"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/worker"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )

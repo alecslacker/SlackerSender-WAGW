@@ -3,7 +3,7 @@ package worker
 import (
 	"time"
 
-	"github.com/Aldi1963/wagataway/internal/chatbackup"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/chatbackup"
 	"github.com/rs/zerolog/log"
 )
 

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Aldi1963/wagataway/internal/database/models"
-	"github.com/Aldi1963/wagataway/internal/middleware"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/middleware"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )

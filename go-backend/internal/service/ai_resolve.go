@@ -5,9 +5,9 @@ package service
 // pilihan user sendiri, bukan key global server.
 
 import (
-	"github.com/Aldi1963/wagataway/internal/config"
-	"github.com/Aldi1963/wagataway/internal/database/models"
-	"github.com/Aldi1963/wagataway/internal/security"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/config"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/security"
 	"gorm.io/gorm"
 )
 

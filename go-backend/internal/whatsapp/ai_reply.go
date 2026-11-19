@@ -18,8 +18,8 @@ package whatsapp
 import (
 	"strings"
 
-	"github.com/Aldi1963/wagataway/internal/database/models"
-	"github.com/Aldi1963/wagataway/internal/service"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/service"
 	"github.com/rs/zerolog/log"
 )
 

@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Aldi1963/wagataway/internal/middleware"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 

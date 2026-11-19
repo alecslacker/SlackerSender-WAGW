@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"github.com/Aldi1963/wagataway/internal/config"
-	"github.com/Aldi1963/wagataway/internal/whatsapp"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/config"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/whatsapp"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )

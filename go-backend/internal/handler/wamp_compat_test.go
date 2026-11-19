@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Aldi1963/wagataway/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
 	"github.com/gin-gonic/gin"
 )
 

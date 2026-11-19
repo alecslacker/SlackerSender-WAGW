@@ -1,4 +1,4 @@
-module github.com/Aldi1963/wagataway
+module github.com/alecslacker/SlackerSender-WAGW/go-backend
 
 go 1.26.0
 

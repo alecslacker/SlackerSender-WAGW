@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Aldi1963/wagataway/internal/config"
-	"github.com/Aldi1963/wagataway/internal/security"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/config"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/security"
 )
 
 // AIProvider represents an AI provider

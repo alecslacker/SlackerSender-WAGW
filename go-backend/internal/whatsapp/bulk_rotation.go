@@ -6,7 +6,7 @@ package whatsapp
 import (
 	"strings"
 
-	"github.com/Aldi1963/wagataway/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
 )
 
 // distributeBulkRecipients membagi penerima secara round-robin ke device-device.

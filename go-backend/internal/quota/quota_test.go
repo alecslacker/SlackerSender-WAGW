@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Aldi1963/wagataway/internal/config"
-	"github.com/Aldi1963/wagataway/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/config"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )

@@ -3,7 +3,7 @@ package database
 import (
 	"testing"
 
-	"github.com/Aldi1963/wagataway/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
 )
 
 // TestMigrateMessageTemplateGrandfather: template lama (status draft, tanpa

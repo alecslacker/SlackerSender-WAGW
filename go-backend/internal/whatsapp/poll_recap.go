@@ -12,7 +12,7 @@ import (
 	"go.mau.fi/whatsmeow/types/events"
 	"gorm.io/gorm"
 
-	"github.com/Aldi1963/wagataway/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
 )
 
 // pollOptionHash menghitung SHA-256 dari nama opsi — sama dengan yang dipakai

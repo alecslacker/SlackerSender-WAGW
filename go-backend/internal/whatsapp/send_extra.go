@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Aldi1963/wagataway/internal/quota"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/quota"
 	"github.com/rs/zerolog/log"
 	"go.mau.fi/whatsmeow"
 	waBinary "go.mau.fi/whatsmeow/binary"

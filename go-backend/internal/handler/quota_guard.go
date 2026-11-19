@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	"github.com/Aldi1963/wagataway/internal/quota"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/quota"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )

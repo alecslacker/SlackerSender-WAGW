@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Aldi1963/wagataway/internal/whatsapp"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/whatsapp"
 )
 
 func TestValidateReactionEmoji(t *testing.T) {

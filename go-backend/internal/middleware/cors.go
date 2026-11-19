@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/Aldi1963/wagataway/internal/config"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/config"
 	"github.com/gin-gonic/gin"
 )
 
