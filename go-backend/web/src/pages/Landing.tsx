@@ -226,7 +226,7 @@ function TerminalBackdrop() {
       drops = Array.from({ length: cols }, () =>
         Math.floor(Math.random() * (canvas.height / FONT))
       );
-      ctx.font = `${FONT}px 'JetBrains Mono', monospace`;
+      ctx.font = `${FONT}px 'JetBrains Mono Variable', 'JetBrains Mono', monospace`;
     };
     resize();
     const ro = new ResizeObserver(resize);

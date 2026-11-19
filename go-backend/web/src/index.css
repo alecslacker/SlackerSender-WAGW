@@ -1,4 +1,7 @@
-/* Font dimuat via <link> di index.html (preconnect + non-blocking). */
+/* Font di-self-host lewat paket @fontsource (dibundel Vite, tanpa CDN Google). */
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+@import "@fontsource/vt323";
 /* Wajib: Tailwind v4 tidak scan node_modules by default (lihat README Kumo).
  * Tanpa ini, class internal Kumo (mis. `contents`) tidak ke-generate. */
 @source "../node_modules/@cloudflare/kumo/dist/**/*.{js,jsx,ts,tsx}";
@@ -38,10 +41,10 @@
   --color-sidebar-border: var(--sidebar-border-color);
   --color-success: var(--success-color);
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-sans: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', 'Fira Code', monospace;
   /* Font display ala terminal CRT untuk judul besar (hero, splash). */
-  --font-display: 'VT323', 'JetBrains Mono', monospace;
+  --font-display: 'VT323', 'JetBrains Mono Variable', monospace;
 
   --radius-sm: 4px;
   --radius-md: 6px;
