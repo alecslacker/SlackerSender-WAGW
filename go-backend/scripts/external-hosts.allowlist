@@ -1,0 +1,54 @@
+# Daftar host luar yang SENGAJA diizinkan di repo ini.
+# Dicek oleh scripts/check-external-hosts.mjs. Tambah host baru hanya bila
+# memang dibutuhkan, dan tulis alasannya di komentar.
+# "*.contoh.com" = semua subdomain + domain induk.
+#
+# Copyright © 2026 Duta Corpora Indonesia — All rights reserved
+
+# ── Milik sendiri ────────────────────────────────────────────────────────
+wasender.slackercode.us         # domain produksi SlackerSender (permanen)
+*.dutacorpora.co.id             # 9router (backend AI bawaan) & layanan DCI
+
+# ── Pembayaran (dipertahankan) ───────────────────────────────────────────
+m.clipku.com                    # Clipku Pay — gateway pembayaran langganan
+*.clipku.com                    # halaman pay & layanan Clipku lain
+
+# ── Provider AI pilihan pengguna (API key milik pengguna sendiri) ────────
+api.openai.com
+api.anthropic.com
+api.deepseek.com
+api.z.ai
+generativelanguage.googleapis.com
+
+# ── Login OAuth & integrasi (opsional, aktif bila client ID diisi) ───────
+accounts.google.com
+oauth2.googleapis.com
+openidconnect.googleapis.com
+www.googleapis.com
+sheets.googleapis.com
+github.com
+api.github.com
+
+# ── Tautan dokumentasi / badge README ────────────────────────────────────
+img.shields.io
+
+# ── Standar & namespace XML (bukan permintaan jaringan) ──────────────────
+www.w3.org
+www.sitemaps.org
+schema.org
+reactjs.org
+tailwindcss.com
+base-ui.com                     # tautan di dalam kode Base UI (bundel)
+fb.me                           # pesan peringatan React (bundel)
+
+# ── Placeholder UI / contoh di dokumentasi / data test ───────────────────
+contoh.com
+api-contoh.com
+toko.id
+example.com
+example.org
+example-api.com
+*.example.com
+jahat.example
+pay.test
+qr.test

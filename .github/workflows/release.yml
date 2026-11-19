@@ -40,6 +40,10 @@ jobs:
           pnpm install --no-frozen-lockfile
           pnpm build
 
+      - name: Cek host luar (source + hasil build)
+        working-directory: go-backend
+        run: node scripts/check-external-hosts.mjs --dist
+
       - name: Package release asset
         run: |
           cd go-backend

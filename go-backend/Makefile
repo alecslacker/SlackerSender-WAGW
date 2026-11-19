@@ -1,4 +1,9 @@
-.PHONY: dev build run clean migrate frontend
+.PHONY: dev build run clean migrate frontend check-hosts
+
+# Pagar dependensi luar: gagal bila ada host di luar scripts/external-hosts.allowlist.
+# Tambahkan --dist setelah `pnpm build` untuk ikut memeriksa hasil build.
+check-hosts:
+	node scripts/check-external-hosts.mjs
 
 # Go backend
 dev:

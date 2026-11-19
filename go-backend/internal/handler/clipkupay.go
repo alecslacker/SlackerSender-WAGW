@@ -278,9 +278,8 @@ func qrisQRDataURL(emv string) string {
 	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(png)
 }
 
-// fetchQrisURL mengambil URL gambar QR QRIS dari halaman pembayaran Clipku Pay.
-// Halaman pay.php me-render QR via api.qrserver.com dengan payload EMV;
-// fungsi ini mengekstrak URL tersebut. Gagal → "" (fallback: tanpa QR).
+// fetchQrisURL mengambil payload EMV QRIS dari halaman pembayaran Clipku Pay
+// lalu merender QR-nya secara lokal (data URL PNG). Gagal → "" (fallback: tanpa QR).
 func fetchQrisURL(paymentURL string) string {
 	fetchURL := paymentURL
 	if strings.Contains(fetchURL, "?") {
@@ -302,8 +301,9 @@ func fetchQrisURL(paymentURL string) string {
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	html := string(raw)
-	// pola di halaman pay.php: https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=0&data=<EMV>
-	// (hanya dibaca untuk mengambil <EMV>; kita tidak memanggil host itu)
+	// Halaman pay.php menyematkan gambar QR dari layanan QR pihak ketiga dengan
+	// query size=320x320&margin=0&data=<EMV>. Kita hanya membaca <EMV>-nya dari
+	// HTML; host itu tidak pernah dipanggil.
 	re := regexp.MustCompile(`https://api\.qrserver\.com/v1/create-qr-code/\?size=320x320(?:&amp;|&)margin=0(?:&amp;|&)data=([0-9A-Za-z%\+\._\-~]+)`)
 	m := re.FindStringSubmatch(html)
 	if len(m) < 2 {
