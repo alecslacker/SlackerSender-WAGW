@@ -53,6 +53,8 @@ func NewRouter(cfg *config.Config, db *gorm.DB, waManager *whatsapp.Manager) *gi
 	r.StaticFile("/sitemap.xml", "./web/dist/sitemap.xml")
 	r.StaticFile("/og-image.png", "./web/dist/og-image.png")
 	r.StaticFile("/favicon.svg", "./web/dist/favicon.svg")
+	// Skrip splash boot (dipisah dari inline <script> agar CSP script-src 'self' berlaku).
+	r.StaticFile("/splash.js", "./web/dist/splash.js")
 	// Identitas SlackerSender: favicon + logo UI + logo partner footer.
 	r.StaticFile("/slackercode.png", "./web/dist/slackercode.png")
 	r.StaticFile("/slackercode-logo.png", "./web/dist/slackercode-logo.png")
