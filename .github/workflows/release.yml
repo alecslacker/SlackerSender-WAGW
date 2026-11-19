@@ -47,17 +47,17 @@ jobs:
       - name: Package release asset
         run: |
           cd go-backend
-          tar -czf wagataway-${{ github.ref_name }}-linux-amd64.tar.gz server web/dist
+          tar -czf slackersender-${{ github.ref_name }}-linux-amd64.tar.gz server web/dist
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: go-backend/wagataway-*.tar.gz
+          files: go-backend/slackersender-*.tar.gz
           generate_release_notes: true
           body: |
-            ## WaGataway ${{ github.ref_name }}
+            ## SlackerSender ${{ github.ref_name }}
 
-            WhatsApp Gateway SaaS — single binary Go + frontend React.
+            WhatsApp API Gateway — single binary Go + frontend React.
 
             **Isi paket:**
             - `server` — binary Linux amd64 (PostgreSQL, CGO enabled)
@@ -65,12 +65,12 @@ jobs:
 
             **Jalankan:**
             ```bash
-            tar -xzf wagataway-${{ github.ref_name }}-linux-amd64.tar.gz
+            tar -xzf slackersender-${{ github.ref_name }}-linux-amd64.tar.gz
             cp .env.example .env   # isi DATABASE_URL, JWT_SECRET, APP_URL
             ./server
             ```
 
-            **Docker:** `ghcr.io/aldi1963/wblash:${{ github.ref_name }}`
+            **Docker:** `ghcr.io/alecslacker/slackersender-wagw:${{ github.ref_name }}`
 
   publish-docker:
     name: Publish container image (ghcr.io)
@@ -93,5 +93,5 @@ jobs:
           file: go-backend/Dockerfile
           push: true
           tags: |
-            ghcr.io/aldi1963/wblash:${{ github.ref_name }}
-            ghcr.io/aldi1963/wblash:latest
+            ghcr.io/alecslacker/slackersender-wagw:${{ github.ref_name }}
+            ghcr.io/alecslacker/slackersender-wagw:latest
