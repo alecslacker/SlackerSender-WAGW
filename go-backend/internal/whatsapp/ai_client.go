@@ -101,7 +101,9 @@ func AskAI(db *gorm.DB, systemPrompt, userMessage string) (string, error) {
 		Text     string `json:"text"`
 		Message  string `json:"message"`
 	}
-	if err := json.Unmarshal(raw, &parsed); err != nil {
+	// Decoder: toleran terhadap ekor SSE ("data: [DONE]") setelah objek JSON
+	// (dikirim sebagian proxy, mis. 9router) — Unmarshal akan menolaknya.
+	if err := json.NewDecoder(bytes.NewReader(bytes.TrimSpace(raw))).Decode(&parsed); err != nil {
 		return "", fmt.Errorf("respon AI tidak valid")
 	}
 	if len(parsed.Choices) > 0 && strings.TrimSpace(parsed.Choices[0].Message.Content) != "" {

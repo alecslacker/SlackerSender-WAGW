@@ -47,7 +47,7 @@ const CURATED_MODELS: Record<string, string[]> = {
 const EDITABLE_BASE_URL: Record<string, string> = {
   deepseek: "https://api.deepseek.com",
   zai: "https://api.z.ai/api/paas/v4",
-  "9router": "https://9router.dutacorpora.co.id/v1",
+  "9router": "", // tanpa placeholder: kosong = pakai bawaan server (AI_DEFAULT_BASE_URL)
   custom: "",
 };
 
@@ -268,7 +268,11 @@ export default function AIConnectionCard({ onChanged }: { onChanged?: () => void
                   className={inputCls}
                   value={baseUrl}
                   onChange={(e) => setBaseUrl(e.target.value)}
-                  placeholder={EDITABLE_BASE_URL[provider] || t("aiReply.connBaseUrlPlaceholder")}
+                  placeholder={
+                    provider === "9router"
+                      ? ""
+                      : EDITABLE_BASE_URL[provider] || t("aiReply.connBaseUrlPlaceholder")
+                  }
                   inputMode="url"
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">{t("aiReply.connBaseUrlHint")}</p>

@@ -284,7 +284,11 @@ func (s *AIService) postChatCompletions(url, key, model string, messages []ChatM
 			TotalTokens int `json:"total_tokens"`
 		} `json:"usage"`
 	}
-	if err := json.Unmarshal(respBody, &result); err != nil {
+	// Decoder (bukan json.Unmarshal): sebagian proxy (mis. 9router) mengirim satu
+	// objek chat.completion utuh LALU ekor SSE ("data: [DONE]"). Unmarshal menolak
+	// teks apa pun setelah objek ("invalid character 'd' after top-level value");
+	// Decoder cukup membaca satu objek JSON pertama dan mengabaikan sisanya.
+	if err := json.NewDecoder(bytes.NewReader(bytes.TrimSpace(respBody))).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to parse AI response: %v (body: %s)", err, truncateAIError(string(respBody)))
 	}
 
