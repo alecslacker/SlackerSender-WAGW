@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
 	"github.com/gin-gonic/gin"
@@ -35,6 +36,26 @@ func seedUserUpdateUser(t *testing.T, db *gorm.DB, email string) models.User {
 		t.Fatalf("seed user: %v", err)
 	}
 	return u
+}
+
+// ensurePlan memastikan paket berslug tertentu ada di DB test (edit paket
+// user kini divalidasi ke tabel plans). Paket yang dibuat helper ini dihapus
+// lagi saat test selesai; paket yang sudah ada dibiarkan apa adanya.
+func ensurePlan(t *testing.T, db *gorm.DB, slug, name string) models.Plan {
+	t.Helper()
+	if err := db.AutoMigrate(&models.Plan{}, &models.Subscription{}); err != nil {
+		t.Fatalf("migrate plan: %v", err)
+	}
+	var p models.Plan
+	if err := db.Where("slug = ?", slug).First(&p).Error; err == nil {
+		return p
+	}
+	p = models.Plan{Name: name, Slug: slug, Price: 100000, Duration: 30, IsActive: true}
+	if err := db.Create(&p).Error; err != nil {
+		t.Fatalf("seed paket %s: %v", slug, err)
+	}
+	t.Cleanup(func() { db.Unscoped().Delete(&models.Plan{}, p.ID) })
+	return p
 }
 
 func deleteUserByEmail(t *testing.T, db *gorm.DB, email string) {
@@ -108,6 +129,8 @@ func TestAdminUpdateUserFormFields(t *testing.T) {
 	email := "uji-user-form@contoh.id"
 	u := seedUserUpdateUser(t, db, email)
 	defer deleteUserByEmail(t, db, email)
+	ensurePlan(t, db, "pro", "Pro")
+	defer db.Where("user_id = ?", u.ID).Delete(&models.Subscription{})
 
 	r := userUpdateRouter(db)
 	// Bentuk body persis form admin (Admin.tsx updateField): satu kunci
@@ -236,5 +259,75 @@ func TestAdminUpdateUserNotFound(t *testing.T) {
 	status, _ := callUserUpdate(t, r, 999999999, map[string]interface{}{"role": "admin"})
 	if status != http.StatusNotFound {
 		t.Fatalf("status = %d, mau 404", status)
+	}
+}
+
+// Regresi "Langganan dashboard tetap Lite setelah admin ganti paket ke Pro":
+// dropdown paket admin dulu hanya mengubah label users.plan, sementara kartu
+// Langganan, kuota, dan batas fitur dibaca dari tabel subscriptions. Sekarang
+// ganti paket ikut mengganti langganan aktif (pola yang sama dengan aktivasi
+// pembayaran).
+func TestAdminUpdateUserPlanReplacesSubscription(t *testing.T) {
+	db := auditTestDB(t)
+	email := "uji-user-plan-sub@contoh.id"
+	u := seedUserUpdateUser(t, db, email)
+	defer deleteUserByEmail(t, db, email)
+	defer db.Where("user_id = ?", u.ID).Delete(&models.Subscription{})
+	lite := ensurePlan(t, db, "lite", "Lite")
+	pro := ensurePlan(t, db, "pro", "Pro")
+
+	now := time.Now()
+	old := models.Subscription{
+		UserID: u.ID, PlanID: lite.ID, Status: "active",
+		StartDate: now.AddDate(0, 0, -2), EndDate: now.AddDate(0, 0, 5), IsTrial: true,
+	}
+	if err := db.Create(&old).Error; err != nil {
+		t.Fatalf("seed langganan lite: %v", err)
+	}
+
+	r := userUpdateRouter(db)
+	if status, body := callUserUpdate(t, r, u.ID, map[string]interface{}{"plan": "pro"}); status != http.StatusOK {
+		t.Fatalf("status = %d, body %v", status, body)
+	}
+
+	var active []models.Subscription
+	db.Where("user_id = ? AND status = ?", u.ID, "active").Find(&active)
+	if len(active) != 1 || active[0].PlanID != pro.ID || active[0].IsTrial {
+		t.Fatalf("langganan aktif = %+v, mau tepat 1 baris paket pro non-trial", active)
+	}
+	var lama models.Subscription
+	db.First(&lama, old.ID)
+	if lama.Status != "expired" {
+		t.Errorf("langganan lite lama status = %q, mau expired", lama.Status)
+	}
+	if got := readUser(t, db, u.ID); got.Plan != "pro" {
+		t.Errorf("users.plan = %q, mau pro", got.Plan)
+	}
+
+	// Turun ke free: semua langganan di-expire, tidak ada baris baru.
+	if status, _ := callUserUpdate(t, r, u.ID, map[string]interface{}{"plan": "free"}); status != http.StatusOK {
+		t.Fatalf("status free = %d", status)
+	}
+	var n int64
+	db.Model(&models.Subscription{}).Where("user_id = ? AND status = ?", u.ID, "active").Count(&n)
+	if n != 0 {
+		t.Errorf("langganan aktif setelah turun ke free = %d, mau 0", n)
+	}
+}
+
+func TestAdminUpdateUserUnknownPlanRejected(t *testing.T) {
+	db := auditTestDB(t)
+	email := "uji-user-plan-ngawur@contoh.id"
+	u := seedUserUpdateUser(t, db, email)
+	defer deleteUserByEmail(t, db, email)
+	if err := db.AutoMigrate(&models.Plan{}, &models.Subscription{}); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	status, _ := callUserUpdate(t, userUpdateRouter(db), u.ID, map[string]interface{}{"plan": "paket-tidak-ada"})
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, mau 400", status)
+	}
+	if got := readUser(t, db, u.ID); got.Plan != "free" {
+		t.Errorf("users.plan = %q, mau tetap free", got.Plan)
 	}
 }

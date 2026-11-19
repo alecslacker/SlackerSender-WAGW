@@ -235,7 +235,28 @@ func adminUpdateUser(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Status tidak valid"})
 			return
 		}
-		if err := db.Model(&user).Updates(updates).Error; err != nil {
+		// Ganti paket dari admin harus ikut mengganti LANGGANAN, bukan hanya
+		// label users.plan: kartu Langganan dashboard, kuota pesan, dan batas
+		// kontak/bulk/auto-reply semuanya dibaca dari tabel subscriptions.
+		newPlanSlug, planChanged := updates["plan"].(string)
+		planChanged = planChanged && newPlanSlug != user.Plan
+		var newPlan models.Plan
+		if planChanged && newPlanSlug != "free" {
+			if err := db.Where("slug = ?", newPlanSlug).First(&newPlan).Error; err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"message": "Paket tidak ditemukan"})
+				return
+			}
+		}
+		err := db.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Model(&user).Updates(updates).Error; err != nil {
+				return err
+			}
+			if !planChanged {
+				return nil
+			}
+			return replaceUserSubscription(tx, user.ID, newPlan, newPlanSlug == "free", time.Now())
+		})
+		if err != nil {
 			// Email bentrok dengan user lain (unique index) dijawab 409
 			// yang jelas, bukan 500 generik.
 			if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "UNIQUE constraint") {
@@ -256,6 +277,33 @@ func adminUpdateUser(db *gorm.DB) gin.HandlerFunc {
 			strconv.FormatUint(id, 10), "Ubah: "+summarizeChanges(updates))
 		c.JSON(http.StatusOK, gin.H{"user": user, "message": "User diperbarui"})
 	}
+}
+
+// replaceUserSubscription menyelaraskan tabel subscriptions dengan paket yang
+// dipilih admin — pola yang sama dengan aktivasi pembayaran (clipkupay.go):
+// langganan active/scheduled lama di-expire, lalu dibuat langganan aktif baru
+// selama plan.Duration hari. Paket free tidak punya baris langganan (user
+// jatuh ke paket free lewat quota.EffectivePlan), jadi hanya meng-expire.
+func replaceUserSubscription(tx *gorm.DB, userID uint, plan models.Plan, toFree bool, now time.Time) error {
+	if err := tx.Model(&models.Subscription{}).
+		Where("user_id = ? AND status IN ?", userID, []string{"active", "scheduled"}).
+		Update("status", "expired").Error; err != nil {
+		return err
+	}
+	if toFree {
+		return nil
+	}
+	days := plan.Duration
+	if days <= 0 {
+		days = 30
+	}
+	return tx.Create(&models.Subscription{
+		UserID:    userID,
+		PlanID:    plan.ID,
+		Status:    "active",
+		StartDate: now,
+		EndDate:   now.AddDate(0, 0, days),
+	}).Error
 }
 
 func adminDeleteUser(db *gorm.DB) gin.HandlerFunc {
