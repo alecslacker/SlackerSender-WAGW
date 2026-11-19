@@ -1,13 +1,15 @@
-# WaGataway
+# SlackerSender — WhatsApp API Gateway Indonesia
 
-[![Release](https://img.shields.io/github/v/release/Aldi1963/wblash)](https://github.com/Aldi1963/wblash/releases)
-[![License: MIT](https://img.shields.io/github/license/Aldi1963/wblash)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Go 1.26](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)](go-backend/go.mod)
-[![Docker](https://img.shields.io/badge/docker-ghcr.io%2Faldi1963%2Fwblash-2496ED?logo=docker)](https://github.com/users/Aldi1963/packages?repo_name=wblash)
+[![React](https://img.shields.io/badge/React-Vite-61DAFB?logo=react)](go-backend/web/package.json)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)](go-backend/docker-compose.yml)
 
-**Platform WhatsApp Gateway SaaS** — kirim pesan otomatis, blast massal, auto-reply, live chat + AI, drip campaign, dan integrasi — dalam satu binary Go, tanpa Node.js.
+**WhatsApp Gateway + REST API self-hosted untuk bisnis dan developer Indonesia.** Satu binary Go menyajikan dashboard React dan seluruh API — tanpa Node.js di server produksi.
 
 > **Coba langsung:** [wasender.slackercode.us](https://wasender.slackercode.us)
+>
+> Repo ini: [github.com/alecslacker/SlackerSender-WAGW](https://github.com/alecslacker/SlackerSender-WAGW)
 
 ## Daftar Isi
 
@@ -16,87 +18,88 @@
 - [Tech Stack](#tech-stack)
 - [Quick Start](#quick-start)
 - [Deploy Production](#deploy-production)
-- [Konfigurasi](#konfigurasi)
 - [API](#api)
 - [Arsitektur](#arsitektur)
 - [Keamanan](#keamanan)
+- [Kemandirian Dependensi](#kemandirian-dependensi)
+- [Konfigurasi](#konfigurasi)
 - [Struktur Proyek](#struktur-proyek)
 - [Berkontribusi](#berkontribusi)
 - [Disclaimer](#disclaimer)
-- [Lisensi](#lisensi)
+- [Lisensi & Atribusi](#lisensi--atribusi)
 
 ## Tentang
 
-WaGataway adalah WhatsApp gateway self-hosted untuk bisnis dan developer Indonesia. Hubungkan nomor WhatsApp lewat QR atau kode pairing, lalu kirim pesan, jalankan campaign, balas pelanggan otomatis (keyword, menu interaktif, atau AI), dan kelola semuanya dari satu dashboard — atau sepenuhnya lewat REST API.
+SlackerSender adalah WhatsApp gateway self-hosted: hubungkan nomor WhatsApp lewat QR atau kode pairing, lalu kirim pesan, jalankan campaign, balas pelanggan otomatis, dan kelola semuanya dari dashboard atau REST API.
 
-Yang membedakan WaGataway:
+Yang membedakan:
 
-- **Satu binary, tanpa dependensi runtime** — backend Go + frontend React disajikan dari satu proses. Tidak perlu Node.js di server.
-- **Multi-device** — banyak nomor WhatsApp dalam satu instalasi, dengan rotasi pengirim dan failover otomatis saat blast.
-- **SaaS-ready** — paket langganan dengan kuota, pembayaran QRIS, voucher, dan panel admin bawaan.
-- **Bilingual** — seluruh antarmuka tersedia dalam Bahasa Indonesia dan English.
+- **Satu binary** — backend Go + frontend React disajikan dari satu proses. Tidak perlu Node.js di server.
+- **Multi-device** — banyak nomor WhatsApp dalam satu instalasi, dengan rotasi pengirim dan failover saat blast.
+- **SaaS-ready** — paket langganan, kuota, QRIS, voucher, dan panel admin.
+- **Kompatibel dengan API Slackersender** — 5 endpoint kirim/cek dengan `api_key` di body untuk sistem yang sudah ada.
+- **Bilingual** — antarmuka Bahasa Indonesia dan English.
+- **Mandiri** — QR dan font dirender lokal; AI memakai endpoint sendiri. Lihat [Kemandirian Dependensi](#kemandirian-dependensi).
 
 ## Fitur
 
 ### Pesan & Blast
 
-- **Multi-Device** — hubungkan banyak nomor WhatsApp sekaligus (QR / kode pairing)
-- **Kirim Pesan** — teks, gambar, dokumen, video, stiker, voice note, lokasi, polling, interactive button
-- **Blast/Bulk** — kirim massal dengan jeda acak anti-banned, **rotasi pengirim** multi-device, dan failover otomatis
-- **Pembersih Nomor** — normalisasi & validasi nomor otomatis sebelum blast
-- **Balas & Idempotency** — replyTo + idempotency key di semua jalur kirim
-- **Status Pesan** — terkirim / dibaca via webhook `message.sent/delivered/read/failed`
+- **Multi-device** — hubungkan banyak nomor (QR / kode pairing), pilih pengirim default.
+- **Kirim pesan** — teks, gambar, dokumen, video, stiker, voice note, lokasi, polling, dan tombol interaktif.
+- **Blast massal** — jeda acak antar pengiriman, rotasi round-robin, failover antar device.
+- **Validasi nomor** — normalisasi & pengecekan nomor sebelum blast.
+- **Webhook pesan** — `message.sent/delivered/read/failed` dengan tanda tangan HMAC-SHA256.
 
 ### Otomatisasi
 
-- **Auto Reply** — keyword matching (exact/contains/startsWith) + jadwal aktif
-- **Chatbot Menu** — menu bertingkat (tekan 1/2/3) dengan session per pengguna
-- **AI Reply** — balas otomatis pakai OpenAI/Anthropic, bisa dibatasi trigger keywords
-- **API OTP** — endpoint kirim kode OTP siap pakai
-- **Welcome Grup & DM** — sambutan otomatis anggota baru grup + welcome DM per grup
-- **Rekap Polling** — rekap hasil polling otomatis
+- **Auto reply** — keyword (exact/contains/startsWith) + jadwal aktif.
+- **Chatbot menu** — menu bertingkat dengan session per pengguna.
+- **AI reply** — OpenAI-compatible (OpenAI, Anthropic, atau endpoint sendiri).
+- **Welcome grup & DM** — sambutan otomatis anggota baru.
+- **Rekap polling** — rekap hasil polling otomatis.
 
 ### Live Chat & CS
 
-- **Live Chat** — balas chat pelanggan manual + kelola label/assign
-- **Indikator online/mengetik** — presence real-time per kontak
-- **CS Bot dua arah** — webhook ke sistem eksternal (mis. PPOB) dengan shared secret
+- **Live chat** — balas chat pelanggan manual, kelola label dan assign.
+- **Presence real-time** — indikator online/mengetik via SSE.
+- **CS bot dua arah** — webhook ke sistem eksternal dengan shared secret (`WAMP_BOT_SECRET`).
 
 ### Kontak & Grup
 
-- **Kontak & Grup** — kelola kontak, grup WA, dan blacklist + import batch
-- **Sync WA** — tarik kontak & grup langsung dari WhatsApp
-- **Validasi kontak** — cek nomor sebelum dikirim
+- **Kontak & grup** — import batch, blacklist, sinkronisasi dari WhatsApp.
+- **Validasi kontak** — cek nomor terdaftar sebelum mengirim.
 
 ### Penjadwalan
 
-- **Scheduled Messages** — kirim terjadwal satu kali
-- **Drip Campaign** — sequence otomatis dengan delay per step
+- **Scheduled messages** — kirim terjadwal satu kali.
+- **Drip campaign** — sequence otomatis dengan delay per step.
 
 ### Integrasi
 
-- **Integration Hub** — konektor siap pakai: Google Forms, WooCommerce, WordPress, Tally, Jotform, Pabbly, Midtrans, Xendit, dan 20+ platform lain
-- **Webhooks** — event ke URL eksternal per-device (dengan toggle on/off) + signature HMAC-SHA256
-- **WAMP compat** — endpoint kompatibel format WAMP untuk sistem legacy
+- **Integration Hub** — konektor untuk Google Forms, Google Sheets, WooCommerce, WordPress, Shopify, Typeform, Tally, Jotform, Zapier, Make, Pabbly, IFTTT, Stripe, Midtrans, Xendit, Telegram, Discord, Slack, GitHub, Trello, Notion, Airtable, HubSpot.
+- **Webhooks** — event per-device (on/off) + HMAC-SHA256, log pengiriman.
+- **API Slackersender** — endpoint root kompatibel untuk sistem lama.
 
 ### Billing & Langganan
 
-- **Paket langganan** — Free, Lite, Regular, Pro, Master dengan kuota pesan
-- **QRIS** — bayar via Clipku Pay, QR dirender lokal di server (payload tidak dikirim ke layanan QR pihak ketiga)
-- **Voucher** — kode voucher trial/paket, ditukar di Settings → tab Tukar Voucher + riwayat penukaran
-- **Transaksi & riwayat** — log pembayaran lengkap
+- **Paket** — Free, Lite, Regular, Pro, Master (`go-backend/seed_plans.sql`, aman dijalankan ulang).
+- **QRIS** — pembayaran via Clipku Pay; QR dirender lokal di server.
+- **Voucher** — kode trial/paket, penukaran, dan riwayat.
+- **Transaksi** — catatan pembayaran lengkap.
 
 ### Produktivitas UI
 
-- **Command Palette** — tekan `Ctrl/⌘+K` untuk lompat halaman, aksi cepat, dan cari kontak
-- **Onboarding 3 langkah** — hubungkan device → kirim pesan tes → selesai
-- **Empty state & skeleton** — tampilan loading modern di semua halaman
-- **Bilingual penuh** — seluruh UI Indonesia/English, pilihan tersimpan per user
+- **Command palette** — `Ctrl/⌘+K` untuk lompat halaman dan aksi cepat.
+- **Onboarding 3 langkah** — hubungkan device → kirim pesan tes → selesai.
+- **Tema terminal** — hitam + hijau, font mono, animasi halus.
+- **Bilingual penuh** — pilihan bahasa tersimpan per user.
 
 ### Admin
 
-- **Admin Panel** — kelola pengguna, paket, voucher, transaksi, log aktivitas, kesehatan sistem, dan notifikasi
-- **Maintenance mode** — toggle mode pemeliharaan
+- **Panel admin** — pengguna, paket, voucher, transaksi, log, kesehatan sistem, notifikasi.
+- **Maintenance mode** — toggle lewat panel atau API.
+- **make-admin** — angkat admin pertama lewat CLI.
 
 ## Tech Stack
 
@@ -104,243 +107,283 @@ Yang membedakan WaGataway:
 |-------|-----------|
 | Backend | Go 1.26 + Gin |
 | WhatsApp | whatsmeow (native Go, tanpa Node.js) |
-| Database | PostgreSQL 16 + GORM (+ Row Level Security) |
-| Frontend | React + Vite + TailwindCSS v4 |
-| Ikon | Lucide + Phosphor |
-| Multi-bahasa | Indonesia / English (i18n, tersimpan per user) |
-| AI | OpenAI (GPT-4o) + Anthropic (Claude) |
+| Database | PostgreSQL 16 + GORM + Row Level Security |
+| Frontend | React + Vite + TailwindCSS v4 + Kumo UI |
+| Font | Self-host via `@fontsource` (tanpa CDN) |
+| AI | Endpoint OpenAI-compatible (default: 9router milik sendiri) |
 | Auth | JWT + 2FA/TOTP + Google OAuth |
 | Real-time | SSE (Server-Sent Events) |
 | Pembayaran | QRIS via Clipku Pay |
-| Deploy | Docker / single binary |
+| Deploy | Binary tunggal / Docker Compose / systemd |
 
 ## Quick Start
 
-Prasyarat: Go 1.26+, Node.js 20+ (hanya untuk dev frontend), PostgreSQL 16, dan pnpm.
+Prasyarat: Go 1.26+ dengan CGO, Node.js 22+ dan pnpm (khusus dev frontend), PostgreSQL 16, dan `psql`.
 
 ```bash
 cd go-backend
 
-# 1. Copy environment
+# 1. Siapkan environment
 cp .env.example .env
-# Edit .env (isi DATABASE_URL, JWT_SECRET, APP_URL, dll)
+# Isi DATABASE_URL dan JWT_SECRET (min. 32 karakter, acak).
+# JWT_SECRET dengan nilai default membuat server berhenti — ini disengaja.
 
-# 2. Jalankan database
-docker compose up -d postgres
+# 2. Buat database
+createdb wagataway
+psql "$DATABASE_URL" -f seed_plans.sql
 
-# 3. Jalankan backend (auto-migrate database)
-make dev
-# atau: go build -o server ./cmd/server && ./server
+# 3. Jalankan backend (auto-migrate)
+CGO_ENABLED=1 go run ./cmd/server
+# atau: make dev
 
-# 4. Jalankan frontend (terminal terpisah)
+# 4. Jalankan frontend di terminal lain
 cd web && pnpm install && pnpm dev
 ```
 
-Buka `http://localhost:5173` untuk frontend, API di `http://localhost:8080` (atau sesuai `PORT`).
+Buka `http://localhost:5173` untuk dashboard. API di `http://localhost:8080/api` (atau sesuai `PORT`).
 
-> Catatan: butuh CGO (`CGO_ENABLED=1`) karena whatsmeow memakai `mattn/go-sqlite3`.
+CGO wajib karena whatsmeow memakai `mattn/go-sqlite3` untuk sesi per-device.
+
+### Opsi Docker Compose
+
+```bash
+cd go-backend
+docker compose up --build -d
+```
+
+Compose menyediakan app, PostgreSQL 16, dan Redis. Port `5432` tidak diekspos ke publik. `JWT_SECRET`, `APP_NAME`, dan variabel AI **tidak** diisi oleh compose — export atau tambahkan lewat environment sebelum menjalankan; sebaiknya ubah juga password PostgreSQL bawaan di `docker-compose.yml`.
 
 ## Deploy Production
 
-**Rilis siap pakai** tersedia di [Releases](https://github.com/Aldi1963/wblash/releases) — binary per versi (`server` + `web/dist`). Image Docker tersedia di [GitHub Packages](https://github.com/users/Aldi1963/packages?repo_name=wblash) (`ghcr.io/aldi1963/wblash:latest`, juga per versi, mis. `:v1.0.2`).
+Binary dan `web/dist` disajikan oleh satu proses Go. Panduan lengkap (tanpa kredensial) ada di [`.trae/documents/deploy-production.md`](.trae/documents/deploy-production.md).
 
 ```bash
-# Docker (recommended) — pakai image yang sudah dipublish per rilis
-docker pull ghcr.io/aldi1963/wblash:latest
-docker run -d --name wagataway -p 8080:8080 \
-  -e DATABASE_URL=postgres://user:pass@host:5432/wagataway?sslmode=disable \
-  -e JWT_SECRET=your-secret-key -e APP_URL=https://wa.example.com \
-  -v wagataway-sessions:/app/wa-sessions \
-  ghcr.io/aldi1963/wblash:latest
-
-# Atau build sendiri dari source
 cd go-backend
-docker compose up --build -d
-
-# Atau manual
-cd go-backend
-CGO_ENABLED=1 go build -o server ./cmd/server
-cd web && pnpm build          # → ./web/dist
-# copy ./web/dist ke direktori kerja server, lalu:
-./server                      # serve API + frontend
+CGO_ENABLED=1 go build -ldflags="-s -w" -o server ./cmd/server
+cd web && pnpm build     # menghasilkan web/dist
+cd .. && ./server        # serve API + dashboard
 ```
 
-> Server hanya me-register SPA fallback bila `./web/dist/index.html` ada **saat startup** — sync `dist` dulu sampai lengkap, baru restart server.
+Hal yang mudah terlewat:
+
+- **SPA fallback hanya didaftarkan bila `web/dist/index.html` ada saat startup.** Sinkronkan `dist` sampai lengkap, lalu restart server.
+- **`web/dist` ikut ter-commit** di repo ini, supaya hasil build yang dijalankan produksi selalu cocok dengan sumbernya.
+- **Bind ke loopback** bila ada reverse proxy: `LISTEN_HOST=127.0.0.1`. Kosong = semua antarmuka (default, cocok untuk Docker). Ini mencegah port aplikasi terjangkau langsung sehingga header `X-Real-IP` dari proxy tidak bisa dipalsukan.
+- **PostgreSQL harus dijalankan dengan role non-superuser.** RLS tidak berlaku untuk superuser, jadi isolasi data antar-user tidak terjamin bila memakai `postgres`.
+- Pakai reverse proxy (nginx) untuk HTTPS dan arahkan ke `127.0.0.1:8080`. Contoh unit systemd dan vhost ada di dokumen deploy.
 
 ### Membuat admin pertama
 
-Pendaftaran selalu menghasilkan akun biasa. Admin pertama diangkat **sekali** lewat server — sengaja tidak otomatis ("pendaftar pertama = admin"), karena registrasi tidak memverifikasi email sehingga aturan otomatis bisa direbut orang yang mendaftar duluan.
-
-1. Daftar lewat halaman **Register** dengan email Anda.
-2. Di server, jalankan:
+Registrasi selalu menghasilkan akun biasa — sengaja tidak ada aturan "pendaftar pertama jadi admin", karena registrasi tanpa verifikasi email bisa direbut orang lain.
 
 ```bash
-./server make-admin anda@domain.com
-# Docker: docker compose exec app ./server make-admin anda@domain.com
+./server make-admin nama@domain.com
+# Docker: docker compose exec app ./server make-admin nama@domain.com
 ```
 
-Menu **Admin** langsung muncul setelah halaman di-refresh — tanpa login ulang. Admin berikutnya dikelola dari panel Admin (ubah role pengguna). Perubahan role dan pemblokiran akun (`banned` / `suspended`) berlaku seketika, karena status dibaca dari database di setiap permintaan.
+Menu Admin muncul setelah halaman di-refresh, tanpa login ulang. Role dan status (`banned` / `suspended`) dibaca dari database di setiap request, sehingga perubahan berlaku seketika. Admin berikutnya dikelola dari panel Admin.
 
-> **Production:** aplikasi harus terhubung ke PostgreSQL dengan role **non-superuser** (bukan `postgres`). Row Level Security tidak berlaku untuk superuser, sehingga isolasi data antar-pengguna tidak terjamin bila memakainya.
+### Pagar dependensi luar
 
-## Konfigurasi
-
-Semua konfigurasi lewat environment variable (lihat `go-backend/.env.example`):
-
-```env
-PORT=8080
-APP_URL=https://wa.example.com
-DATABASE_URL=postgres://user:pass@localhost:5432/wagataway?sslmode=disable
-JWT_SECRET=your-secret-key
-WA_SESSIONS_DIR=./wa-sessions
-OPENAI_API_KEY=sk-xxx
-ANTHROPIC_API_KEY=sk-ant-xxx
-# Backend AI bawaan (9router, OpenAI-compatible); ganti bila pindah server
-AI_DEFAULT_BASE_URL=https://9router.dutacorpora.co.id/v1
-AI_DEFAULT_MODEL=ag/gemini-3.8-flash-low
-# Pembayaran QRIS
-CLIPKUPAY_API_KEY=
-CLIPKUPAY_BASE_URL=https://m.clipku.com
-CLIPKUPAY_WEBHOOK_URL=https://wa.example.com/api/billing/clipkupay/webhook
-# Bot dua arah (opsional)
-WAMP_BOT_SECRET=shared-secret
-# Email reset password (opsional)
-SMTP_HOST=smtp.gmail.com
-SMTP_USER=email@gmail.com
-SMTP_PASS=app-password
+```bash
+cd go-backend
+make check-hosts          # periksa host di sumber
+make check-hosts ARGS=--dist   # termasuk hasil build (lihat Makefile/release.yml)
 ```
+
+Daftar yang diizinkan ada di `scripts/external-hosts.allowlist`.
 
 ## API
 
-Base URL: `{APP_URL}/api`. Autentikasi memakai Bearer Token (JWT) kecuali endpoint publik.
+Base URL: `{APP_URL}/api`. Autentikasi dashboard memakai Bearer token (JWT); API eksternal memakai API key dengan scope atau Bearer token.
 
-### Public
+### Endpoint kompatibel Slackersender (root, bukan `/api`)
+
+Api key dikirim di body (`api_key`) atau header `X-API-Key`. Mendukung JSON dan form-urlencoded, GET dan POST.
+
+| Method | Path | Scope | Parameter utama |
+|--------|------|-------|-----------------|
+| POST/GET | `/send-message` | `messages:send` | `api_key`, `number`, `message`, `sender?`, `reply_to?` |
+| POST/GET | `/send-media` | `messages:send` | `api_key`, `number`, `url`, `media_type?`, `caption?` |
+| POST/GET | `/send-location` | `messages:send` | `api_key`, `number`, `latitude`, `longitude` |
+| POST/GET | `/info-device` | `devices:read` | `api_key`, `number` (nomor/ID/nama device) |
+| POST/GET | `/check-number` | `contacts` | `api_key`, `number`, `sender?` |
+
+`sender` boleh ID device, nomor HP, atau nama device; kosong = device default. `media_type`: `image` (default), `video`, `audio`, `document`. Respons mengantre pesan (`status: true` berarti diterima untuk dikirim, bukan sudah terkirim ke WhatsApp). Contoh lengkap ada di halaman **API Docs** di dashboard.
+
+### Publik
 
 | Method | Path | Deskripsi |
 |--------|------|-----------|
-| POST | /api/auth/login | Login (mendukung 2FA) |
-| POST | /api/auth/register | Register |
-| POST | /api/auth/forgot-password | Minta link reset |
-| POST | /api/auth/reset-password | Reset password |
-| GET | /api/l/:code | Short link redirect |
+| POST | `/api/auth/login` | Login (mendukung 2FA) |
+| POST | `/api/auth/register` | Register |
+| POST | `/api/auth/forgot-password` | Minta link reset |
+| POST | `/api/auth/reset-password` | Reset password |
+| GET | `/api/l/:code` | Alihkan short link |
+| POST | `/api/billing/clipkupay/webhook` | Webhook pembayaran (X-Signature) |
 
-### Protected (Bearer Token)
+### Dilindungi (Bearer token atau API key)
 
 | Method | Path | Deskripsi |
 |--------|------|-----------|
-| GET | /api/devices | List perangkat |
-| POST | /api/devices/:id/connect | Hubungkan WA |
-| GET | /api/devices/:id/qr | Get QR code |
-| POST | /api/devices/:id/pair-code | Kode pairing |
-| PUT | /api/devices/:id | Edit (nama, webhook, toggle) |
-| POST | /api/messages/send | Kirim pesan (semua tipe) |
-| POST | /api/messages/bulk | Blast pesan |
-| GET | /api/messages/:id/status | Status pesan |
-| DELETE | /api/messages/:id | Hapus pesan |
-| GET | /api/contacts | List kontak |
-| POST | /api/contacts/sync | Sync kontak dari WA |
-| GET | /api/contacts/validate | Validasi nomor |
-| GET | /api/contact-groups | List grup |
-| POST | /api/contact-groups/sync | Sync grup dari WA |
-| GET | /api/chat/conversations | List percakapan |
-| POST | /api/chat/send | Kirim chat manual |
-| GET | /api/chat/history | Riwayat chat |
-| GET | /api/ai-reply | Konfigurasi AI reply |
-| GET | /api/auto-reply | List auto-reply rules |
-| GET | /api/menu-bot | Chatbot menu bertingkat |
-| POST | /api/otp/send | Kirim OTP |
-| GET | /api/drip | List drip campaigns |
-| GET | /api/schedule | List jadwal pesan |
-| GET | /api/analytics/overview | Statistik |
-| GET | /api/billing/plans | List paket |
-| POST | /api/billing/subscribe | Buat pembayaran QRIS |
-| POST | /api/billing/voucher/redeem | Tukar kode voucher |
-| GET | /api/billing/voucher/redemptions | Riwayat penukaran voucher |
-| POST | /api/billing/clipkupay/webhook | Webhook Clipku Pay |
-| GET | /api/auth/sessions | Sesi aktif |
-| GET | /api/api-keys | Kelola API key |
-| GET | /api/integrations | Integration Hub |
-| GET | /api/stream | SSE real-time events |
+| GET | `/api/devices` | Daftar perangkat |
+| POST | `/api/devices/:id/connect` | Hubungkan WhatsApp |
+| GET | `/api/devices/:id/qr` | QR code (dirender lokal) |
+| POST | `/api/devices/:id/pair-code` | Kode pairing |
+| GET | `/api/devices/:id/status` | Status perangkat |
+| POST | `/api/messages/send` | Kirim pesan |
+| POST | `/api/messages/send-bulk` | Blast pesan |
+| GET | `/api/messages/:id/status` | Status pesan |
+| GET | `/api/contacts` | Daftar kontak |
+| POST | `/api/contacts/sync` | Sinkron kontak dari WA |
+| POST | `/api/contacts/validate` | Validasi nomor |
+| GET | `/api/contact-groups` | Daftar grup |
+| POST | `/api/contact-groups/sync` | Sinkron grup dari WA |
+| GET | `/api/chat/conversations` | Daftar percakapan |
+| POST | `/api/chat/send` | Balas chat manual |
+| GET | `/api/chat/history` | Riwayat chat |
+| GET | `/api/ai-reply` | Konfigurasi AI reply |
+| GET | `/api/auto-reply` | Aturan auto reply |
+| GET | `/api/menu-bots` | Chatbot menu |
+| GET | `/api/drip` | Drip campaign |
+| GET | `/api/schedule` | Pesan terjadwal |
+| GET | `/api/analytics/overview` | Statistik |
+| GET | `/api/billing/plans` | Daftar paket |
+| POST | `/api/billing/subscribe` | Buat pembayaran QRIS |
+| POST | `/api/billing/voucher/redeem` | Tukar voucher |
+| GET | `/api/api-keys` | Kelola API key |
+| GET | `/api/sessions` | Sesi aktif |
+| GET | `/api/integrations` | Integration Hub |
+| GET | `/api/stream` | SSE real-time |
 
 ### Admin (`/api/admin/*`)
 
 | Method | Path | Deskripsi |
 |--------|------|-----------|
-| GET | /api/admin/users | List semua user |
-| GET | /api/admin/analytics | Global analytics |
-| GET | /api/admin/transactions | Semua transaksi |
-| PUT | /api/admin/maintenance | Toggle maintenance |
+| GET/POST | `/api/admin/users` | Kelola pengguna |
+| GET | `/api/admin/analytics` | Analitik global |
+| GET | `/api/admin/transactions` | Semua transaksi |
+| PUT | `/api/admin/maintenance` | Toggle maintenance |
+
+Daftar lengkap dan contoh curl tersedia di halaman **API Docs** (`/api-docs`) dan **Playground** (`/api-playground`) pada dashboard.
 
 ## Arsitektur
 
 ```
-Single Go Binary
-├── HTTP Server (Gin) ─── REST API + SSE + Static files
-├── WhatsApp Manager ──── whatsmeow sessions (per-device SQLite)
-├── Background Workers ── Cron scheduler (bulk, drip, scheduled, backup)
-├── AI Service ────────── OpenAI + Anthropic completions
-└── RLS Layer ─────────── PostgreSQL Row Level Security per user
+Satu binary Go
+├── HTTP Server (Gin) ─── REST API + SSE + static files + SPA fallback
+├── WhatsApp Manager ──── sesi whatsmeow per-device (SQLite)
+├── Background Workers ── scheduler (bulk, drip, scheduled, backup chat)
+├── AI Service ────────── endpoint OpenAI-compatible
+├── RLS Layer ─────────── PostgreSQL Row Level Security per user
+└── web/dist ──────────── dashboard React yang disajikan langsung
 ```
 
-Tidak perlu Node.js, tidak perlu microservice terpisah. Satu binary handle semuanya.
+Tidak ada microservice wajib. `motion/` adalah project Remotion terpisah yang hanya dipakai untuk merender video hero dan tidak dibutuhkan saat runtime.
 
 ## Keamanan
 
-- **2FA/TOTP** — verifikasi 2 langkah + kode cadangan sekali pakai
-- **Brute-force lockout** — kunci 15 menit setelah 5x gagal + rate limiter
-- **Notifikasi IP baru** — peringatan login dari IP asing (dedup 30 hari)
-- **Manajemen sesi** — lihat & cabut sesi aktif per perangkat
-- **API Key** — scopes (full/messages:send/dll), expiry, dan rotasi
-- **Row Level Security** — PostgreSQL RLS sebagai lapis kedua di atas filter aplikasi (role `wagataway_app`, non-superuser)
-- **Backup terenkripsi** — backup database harian otomatis (AES-256, retensi 7 hari)
+- **2FA/TOTP** — verifikasi dua langkah + kode cadangan sekali pakai.
+- **Lockout login** — kunci 15 menit setelah 5 kali gagal; rate limiter global, publik, dan auth.
+- **Notifikasi IP baru** — peringatan login dari IP asing (dedup).
+- **Manajemen sesi** — lihat dan cabut sesi aktif per perangkat.
+- **API key** — scope (`full`, `messages:send`, `messages:read`, `contacts`, `devices:read`, `devices:write`, `chat`, `files`, `webhooks`), expiry, rotasi.
+- **Webhook** — tanda tangan HMAC-SHA256.
+- **RLS** — lapisan kedua di atas filter aplikasi; wajib pakai role database non-superuser.
+- **Enkripsi** — kredensial AI dan webhook dienkripsi AES-256-GCM; kunci dari `AI_KEYS_SECRET` atau `JWT_SECRET` (fail-closed).
+- **CSP** — `script-src`/`connect-src 'self'` untuk halaman web (kecuali `/api/`).
+- **Backup chat** — cadangan percakapan harian dengan retensi.
 
-Menemukan celah keamanan? Laporkan lewat [GitHub Issues](https://github.com/Aldi1963/wblash/issues) (jangan dipublikasikan dulu sebelum diperbaiki).
+Laporkan celah keamanan lewat [GitHub Issues](https://github.com/alecslacker/SlackerSender-WAGW/issues). Jangan mempublikasikan detail sebelum diperbaiki.
+
+## Kemandirian Dependensi
+
+Proyek ini sengaja mengurangi ketergantungan ke pihak ketiga:
+
+- **QR WhatsApp** dirender di backend. Kode QR tidak dikirim ke layanan pembuat QR luar.
+- **Font** self-host lewat `@fontsource`; tidak ada permintaan ke Google Fonts.
+- **AI** memakai endpoint OpenAI-compatible yang bisa diarahkan ke server sendiri. Default bawaan: `https://9router.dutacorpora.co.id/v1` dengan model `ag/gemini-3.8-flash-low`. Ganti lewat `AI_DEFAULT_BASE_URL` dan `AI_DEFAULT_MODEL` bila memindah server. Base URL divalidasi untuk mencegah SSRF.
+- **Clipku Pay** tetap dipakai untuk QRIS; base URL bisa diatur lewat `CLIPKUPAY_BASE_URL`.
+
+Perintah `make check-hosts` menggagalkan build bila ada host luar yang tidak tercantum di `scripts/external-hosts.allowlist`.
+
+## Konfigurasi
+
+Semua konfigurasi lewat environment variable; lihat [`go-backend/.env.example`](go-backend/.env.example) untuk daftar lengkap. Ringkasannya:
+
+```env
+PORT=8080
+LISTEN_HOST=127.0.0.1        # kosong = dengar di semua antarmuka
+APP_NAME=SlackerSender
+APP_URL=https://wasender.slackercode.us
+DATABASE_URL=postgres://user:pass@localhost:5432/wagataway?sslmode=disable
+JWT_SECRET=ganti-dengan-string-acak-min-32-karakter
+AI_KEYS_SECRET=secret-acak-lainnya
+WA_SESSIONS_DIR=./wa-sessions
+
+# AI (OpenAI-compatible)
+AI_DEFAULT_BASE_URL=https://9router.dutacorpora.co.id/v1
+AI_DEFAULT_MODEL=ag/gemini-3.8-flash-low
+
+# QRIS
+CLIPKUPAY_API_KEY=
+CLIPKUPAY_BASE_URL=https://m.clipku.com
+CLIPKUPAY_WEBHOOK_URL=https://wasender.slackercode.us/api/billing/clipkupay/webhook
+
+# Opsional
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+SMTP_HOST=smtp.gmail.com
+SMTP_USER=email@gmail.com
+SMTP_PASS=app-password
+WAMP_BOT_SECRET=shared-secret
+```
+
+Jangan pernah commit `.env` atau secret. Gunakan file env dengan izin `0600` di server.
 
 ## Struktur Proyek
 
 ```
-wagataway/
+SlackerSender-WAGW/
 ├── go-backend/
-│   ├── cmd/server/              # Entry point (main.go)
+│   ├── cmd/server/          # Entry point + subcommand make-admin
 │   ├── internal/
-│   │   ├── config/              # Environment config
-│   │   ├── database/            # Koneksi + AutoMigrate + models/
-│   │   ├── handler/             # HTTP handler
-│   │   │   ├── clipkupay.go     # Pembayaran QRIS
-│   │   │   └── wamp_compat.go   # Shim kompatibilitas WAMP
-│   │   ├── middleware/          # Auth, CORS, rate limit, 2FA
-│   │   ├── rls/                 # Row Level Security (pgx driver-level)
-│   │   ├── service/             # AI service (OpenAI + Anthropic)
-│   │   ├── whatsapp/            # Session manager whatsmeow
-│   │   │   ├── ai_reply.go      # AI auto-reply per device
-│   │   │   └── deviceflags.go   # readReceipts, rejectCall, dsb.
-│   │   ├── realtime/            # SSE hub
-│   │   └── worker/              # Background scheduler
-│   ├── web/                     # React frontend
-│   │   ├── src/pages/           # Halaman (dashboard, billing, dsb.)
-│   │   ├── src/components/      # UI: layout, CommandPalette, dsb.
-│   │   ├── src/lib/i18n.tsx     # Kamus ID/EN
-│   │   └── src/hooks/           # Auth, theme, dsb.
-│   ├── Dockerfile               # Multi-stage build
-│   ├── docker-compose.yml       # Full stack
-│   └── Makefile
+│   │   ├── config/          # Environment + alamat dengar
+│   │   ├── database/        # Koneksi, migrasi, model
+│   │   ├── handler/         # HTTP handler (termasuk wamp_compat.go)
+│   │   ├── middleware/      # Auth, scope, CORS, rate limit, security headers
+│   │   ├── rls/             # Row Level Security via driver pgx
+│   │   ├── security/        # Enkripsi kredensial
+│   │   ├── whatsapp/        # Manager sesi whatsmeow + rotasi blast
+│   │   └── worker/          # Scheduler background
+│   ├── scripts/             # Pemeriksa host luar + allowlist
+│   ├── web/                 # Dashboard React + web/dist hasil build
+│   ├── seed_plans.sql
+│   └── Dockerfile / docker-compose.yml / Makefile
+├── motion/                  # Project Remotion untuk video hero (opsional)
+└── .trae/documents/         # Rencana, panduan deploy dan skrip pendukung
 ```
 
 ## Berkontribusi
 
-Kontribusi sangat diterima — bug report, saran fitur, maupun pull request.
+Kontribusi diterima — bug report, saran fitur, maupun pull request.
 
-1. Fork repo ini, buat branch dari `main` (`git checkout -b fitur/nama-fitur`).
-2. Ikuti gaya kode yang sudah ada (Go: `gofmt`; frontend: Prettier).
-3. Pastikan tidak ada secret/credential yang ikut ter-commit.
-4. Buka pull request dengan deskripsi perubahan yang jelas.
+1. Fork repo ini, buat branch dari `main`.
+2. Ikuti gaya kode yang ada (Go: `gofmt`; frontend: Prettier).
+3. Jangan sertakan secret atau kredensial.
+4. Jalankan `go build ./...`, `go vet ./...`, dan `pnpm build` sebelum mengirim perubahan.
+5. Buka pull request dengan deskripsi yang jelas.
 
-Untuk pertanyaan dan diskusi, silakan buka [GitHub Issues](https://github.com/Aldi1963/wblash/issues).
+Pertanyaan dan diskusi: [GitHub Issues](https://github.com/alecslacker/SlackerSender-WAGW/issues).
 
 ## Disclaimer
 
-WaGataway memakai **unofficial WhatsApp Web API** (via library whatsmeow) dan **tidak berafiliasi dengan WhatsApp / Meta**. Penggunaan WhatsApp API tidak resmi berisiko dibatasi atau diblokir oleh WhatsApp — gunakan nomor cadangan dan patuhi ketentuan layanan WhatsApp. Proyek ini disediakan "sebagaimana adanya" (lihat [LICENSE](LICENSE)).
+SlackerSender memakai **unofficial WhatsApp Web API** (melalui library whatsmeow) dan **tidak berafiliasi dengan WhatsApp / Meta**. Penggunaan API tidak resmi berisiko dibatasi atau diblokir oleh WhatsApp — gunakan nomor cadangan dan patuhi ketentuan layanan WhatsApp. Perangkat lunak disediakan "sebagaimana adanya".
 
-## Lisensi
+## Lisensi & Atribusi
 
-MIT — lihat [LICENSE](LICENSE). Copyright © 2026 Aldi1963.
+MIT — lihat [LICENSE](LICENSE).
+
+Copyright © 2026 Duta Corpora Indonesia — All rights reserved.
+
+Kode awal proyek ini berasal dari fork **WaGataway** oleh Aldi1963 di bawah lisensi MIT. Hak cipta dan teks lisensi asli tetap dipertahankan sesuai ketentuan MIT. Pengembangan lanjutan, rebranding SlackerSender, dan perubahan fitur oleh **Mas Wondho — Duta Corpora Indonesia (DCI)**.
