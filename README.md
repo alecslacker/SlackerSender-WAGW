@@ -167,6 +167,22 @@ cd web && pnpm build          # → ./web/dist
 
 > Server hanya me-register SPA fallback bila `./web/dist/index.html` ada **saat startup** — sync `dist` dulu sampai lengkap, baru restart server.
 
+### Membuat admin pertama
+
+Pendaftaran selalu menghasilkan akun biasa. Admin pertama diangkat **sekali** lewat server — sengaja tidak otomatis ("pendaftar pertama = admin"), karena registrasi tidak memverifikasi email sehingga aturan otomatis bisa direbut orang yang mendaftar duluan.
+
+1. Daftar lewat halaman **Register** dengan email Anda.
+2. Di server, jalankan:
+
+```bash
+./server make-admin anda@domain.com
+# Docker: docker compose exec app ./server make-admin anda@domain.com
+```
+
+Menu **Admin** langsung muncul setelah halaman di-refresh — tanpa login ulang. Admin berikutnya dikelola dari panel Admin (ubah role pengguna). Perubahan role dan pemblokiran akun (`banned` / `suspended`) berlaku seketika, karena status dibaca dari database di setiap permintaan.
+
+> **Production:** aplikasi harus terhubung ke PostgreSQL dengan role **non-superuser** (bukan `postgres`). Row Level Security tidak berlaku untuk superuser, sehingga isolasi data antar-pengguna tidak terjamin bila memakainya.
+
 ## Konfigurasi
 
 Semua konfigurasi lewat environment variable (lihat `go-backend/.env.example`):
