@@ -1,13 +1,13 @@
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, X, Users, UserPlus, RefreshCw, ChevronRight, MessageCircleHeart } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Users, UserPlus, RefreshCw, ChevronRight, MessageCircleHeart, Download, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Toggle } from "@/components/Toggle";
-import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
+import { apiGet, apiPost, apiPut, apiDelete, apiFetch } from "@/lib/api";
 import SyncWAButton from "@/components/contacts/SyncWAButton";
 import WAGroupIdsButton from "@/components/contacts/WAGroupIdsButton";
 import { useLang } from "@/lib/i18n";
@@ -28,7 +28,8 @@ interface Member {
   id: number;
   groupId: number;
   contactId: number;
-  createdAt: string;
+  name: string;
+  phone: string;
 }
 
 interface Contact {
@@ -88,6 +89,12 @@ export default function ContactGroups({ embedded = false }: { embedded?: boolean
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<Group | null>(null);
 
+  // Pilihan massal (hapus / export)
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
   // Members dialog
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -143,7 +150,12 @@ export default function ContactGroups({ embedded = false }: { embedded?: boolean
     setError(null);
     try {
       const res = await apiGet<{ groups: Group[] }>("/contact-groups");
-      setGroups(res.groups || []);
+      const list = res.groups || [];
+      setGroups(list);
+      setSelected((prev) => {
+        const ada = new Set(list.map((g) => g.id));
+        return new Set([...prev].filter((id) => ada.has(id)));
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : t("contactGroups.loadFailed"));
     } finally {
@@ -215,6 +227,7 @@ export default function ContactGroups({ embedded = false }: { embedded?: boolean
     try {
       const [mRes, cRes] = await Promise.all([
         apiGet<{ members: Member[] }>(`/contact-groups/${g.id}/members`),
+        // Hanya untuk pilihan "tambah anggota"; nama anggota datang dari server.
         apiGet<{ contacts: Contact[] }>("/contacts?limit=200"),
       ]);
       setMembers(mRes.members || []);
@@ -257,6 +270,61 @@ export default function ContactGroups({ embedded = false }: { embedded?: boolean
     }
   };
 
+  // ── Pilihan massal ──
+  const allSelected = groups.length > 0 && groups.every((g) => selected.has(g.id));
+  const toggleOne = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(groups.map((g) => g.id)));
+
+  // Hapus massal: hanya grup di platform ini; kontak & grup WhatsApp tidak tersentuh.
+  const confirmBulkDelete = async () => {
+    if (selected.size === 0) return;
+    setBulkBusy(true);
+    try {
+      const res = await apiPost<{ deleted: number }>("/contact-groups/bulk-delete", { ids: [...selected] });
+      toast.success(t("contactGroups.bulkDeleted").replace("{n}", String(res.deleted)));
+      setSelected(new Set());
+      setBulkDeleting(false);
+      load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("contactGroups.deleteFailed"));
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  // Export CSV grup terpilih (tanpa pilihan = semua grup). Diunduh lewat fetch
+  // supaya token login ikut terkirim.
+  const exportGroups = async () => {
+    setExporting(true);
+    try {
+      const qs = selected.size > 0 ? `?ids=${[...selected].join(",")}` : "";
+      const res = await apiFetch(`/contact-groups/export${qs}`);
+      if (!res.ok) {
+        const msg = (await res.json().catch(() => ({ message: "" }))).message;
+        throw new Error(msg || t("contactGroups.exportFailed"));
+      }
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `grup-kontak-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(t("contactGroups.exported"));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("contactGroups.exportFailed"));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const memberContactIds = new Set(members.map((m) => m.contactId));
   const availableContacts = Object.values(contactMap).filter(
     (c) => !memberContactIds.has(c.id)
@@ -276,6 +344,12 @@ export default function ContactGroups({ embedded = false }: { embedded?: boolean
         <div className="flex flex-wrap gap-2 self-start sm:self-auto">
           <SyncWAButton kind="groups" onDone={load} />
           <WAGroupIdsButton />
+          <Button variant="outline" onClick={exportGroups} disabled={exporting || groups.length === 0} className="gap-1.5">
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            {selected.size > 0
+              ? t("contactGroups.exportSelected").replace("{n}", String(selected.size))
+              : t("contactGroups.exportAll")}
+          </Button>
           <Button onClick={openAdd} className="gap-1.5">
             <Plus className="w-4 h-4" />
             {t("contactGroups.createGroup")}
@@ -318,12 +392,47 @@ export default function ContactGroups({ embedded = false }: { embedded?: boolean
           </CardContent>
         </Card>
       ) : (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border px-3 py-2">
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleAll}
+                className="h-4 w-4 accent-primary cursor-pointer"
+              />
+              {t("contactGroups.selectAll")}
+            </label>
+            <span className="text-sm text-muted-foreground" aria-live="polite">
+              {selected.size > 0
+                ? t("contactGroups.selectedCount").replace("{n}", String(selected.size))
+                : t("contactGroups.selectHint")}
+            </span>
+            {selected.size > 0 && (
+              <div className="ml-auto flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setSelected(new Set())}>
+                  {t("contactGroups.clearSelection")}
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => setBulkDeleting(true)} className="gap-1.5">
+                  <Trash2 className="w-4 h-4" />
+                  {t("contactGroups.deleteSelected").replace("{n}", String(selected.size))}
+                </Button>
+              </div>
+            )}
+          </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {groups.map((g) => (
-            <Card key={g.id}>
+            <Card key={g.id} className={selected.has(g.id) ? "ring-2 ring-primary" : ""}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(g.id)}
+                      onChange={() => toggleOne(g.id)}
+                      aria-label={t("contactGroups.selectGroup").replace("{name}", g.name)}
+                      className="h-4 w-4 shrink-0 accent-primary cursor-pointer"
+                    />
                     <span
                       className="w-4 h-4 rounded-full shrink-0"
                       style={{ backgroundColor: g.color || "#15803d" }}
@@ -386,6 +495,7 @@ export default function ContactGroups({ embedded = false }: { embedded?: boolean
               </CardContent>
             </Card>
           ))}
+        </div>
         </div>
       )}
 
@@ -480,7 +590,7 @@ export default function ContactGroups({ embedded = false }: { embedded?: boolean
           ) : (
             <div className="space-y-2 max-h-[40vh] overflow-y-auto">
               {members.map((m) => {
-                const c = contactMap[m.contactId];
+                const label = m.name && m.name !== m.phone ? m.name : "";
                 return (
                   <div
                     key={m.id}
@@ -488,10 +598,10 @@ export default function ContactGroups({ embedded = false }: { embedded?: boolean
                   >
                     <div className="min-w-0">
                       <p className="font-medium text-sm truncate">
-                        {c ? c.name : t("contactGroups.contactHash").replace("{id}", String(m.contactId))}
+                        {label || m.phone || t("contactGroups.contactHash").replace("{id}", String(m.contactId))}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {c ? c.phone : t("contactGroups.contactNotFound")}
+                        {label ? m.phone : t("contactGroups.noNameYet")}
                       </p>
                     </div>
                     <Button
@@ -556,6 +666,30 @@ export default function ContactGroups({ embedded = false }: { embedded?: boolean
                 {welcomeSaving ? t("contactGroups.saving") : t("common.save")}
               </Button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Bulk delete confirm */}
+      {bulkDeleting && (
+        <Modal title={t("contactGroups.bulkDeleteTitle")} onClose={() => !bulkBusy && setBulkDeleting(false)}>
+          <p className="text-sm text-muted-foreground mb-3">
+            {t("contactGroups.bulkDeleteConfirm").replace("{n}", String(selected.size))}
+          </p>
+          <ul className="mb-5 max-h-40 overflow-y-auto rounded-lg border border-border divide-y divide-border text-sm">
+            {groups.filter((g) => selected.has(g.id)).map((g) => (
+              <li key={g.id} className="px-3 py-1.5 truncate">{g.name}</li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted-foreground mb-5">{t("contactGroups.bulkDeleteSafe")}</p>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setBulkDeleting(false)} disabled={bulkBusy}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="destructive" onClick={confirmBulkDelete} disabled={bulkBusy} className="gap-1.5">
+              {bulkBusy && <Loader2 className="w-4 h-4 animate-spin" />}
+              {t("contactGroups.deleteSelected").replace("{n}", String(selected.size))}
+            </Button>
           </div>
         </Modal>
       )}

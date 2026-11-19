@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"unicode"
 	"time"
 
 	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
@@ -50,6 +51,54 @@ func waContactName(info types.ContactInfo, fallback string) string {
 		}
 	}
 	return fallback
+}
+
+// cleanContactName membersihkan nama dari WhatsApp: buang karakter kontrol,
+// rapikan spasi, batasi 200 karakter (kolom contacts.name = 255).
+func cleanContactName(n string) string {
+	n = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, n)
+	n = strings.TrimSpace(n)
+	if r := []rune(n); len(r) > 200 {
+		n = strings.TrimSpace(string(r[:200]))
+	}
+	return n
+}
+
+// waNameLookup membuat pencari nama (nomor -> nama) dari penyimpanan perangkat
+// WhatsApp: nama kontak di HP lebih dulu, lalu nama panggilan WhatsApp orang
+// itu. Peserta grup sering tersimpan di bawah alamat LID, jadi bila alamat
+// nomor tak punya nama, dicoba LID-nya. Hasil di-cache; "" = tidak ada nama.
+func waNameLookup(ctx context.Context, client *whatsmeow.Client) func(phone string) string {
+	cache := map[string]string{}
+	return func(phone string) string {
+		if n, ok := cache[phone]; ok {
+			return n
+		}
+		name := ""
+		if client != nil && client.Store != nil && client.Store.Contacts != nil {
+			pn := types.NewJID(phone, types.DefaultUserServer)
+			if info, err := client.Store.Contacts.GetContact(ctx, pn); err == nil {
+				name = cleanContactName(waContactName(info, ""))
+			}
+			if name == "" && client.Store.LIDs != nil {
+				if lid, err := client.Store.LIDs.GetLIDForPN(ctx, pn); err == nil && !lid.IsEmpty() {
+					if info, err := client.Store.Contacts.GetContact(ctx, lid); err == nil {
+						name = cleanContactName(waContactName(info, ""))
+					}
+				}
+			}
+		}
+		if name == phone {
+			name = "" // nama yang cuma nomor tidak ada gunanya
+		}
+		cache[phone] = name
+		return name
+	}
 }
 
 // upsertSyncContact mencari kontak user berdasar nomor; buat baru bila belum ada,
@@ -99,7 +148,10 @@ func upsertSyncContactCapped(db *gorm.DB, userID uint, phone, name string, remai
 		}
 		return false, false, false
 	}
-	if strings.TrimSpace(existing.Name) == "" && name != phone {
+	// Lengkapi hanya nama yang kosong atau yang cuma berisi nomornya sendiri
+	// (hasil sync lama). Nama yang sudah diisi pengguna tidak pernah ditimpa.
+	cur := strings.TrimSpace(existing.Name)
+	if (cur == "" || cur == phone) && name != "" && name != phone {
 		db.Model(&existing).Update("name", name)
 		return false, true, false
 	}
@@ -234,7 +286,8 @@ func syncGroupsFromWA(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "deviceId wajib diisi", "code": "VALIDATION_ERROR"})
 			return
 		}
-		if _, err := resolveSyncClient(c, udb, wm, req.DeviceID); err != nil {
+		client, err := resolveSyncClient(c, udb, wm, req.DeviceID)
+		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error(), "code": "DEVICE_OFFLINE"})
 			return
 		}
@@ -245,7 +298,10 @@ func syncGroupsFromWA(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 			return
 		}
 
-		groupsAdded, groupsUpdated, membersLinked, capped, membersUnresolved := 0, 0, 0, 0, 0
+		groupsAdded, groupsUpdated, membersLinked, capped, membersUnresolved, namesFilled := 0, 0, 0, 0, 0, 0
+		nameCtx, nameCancel := context.WithTimeout(context.Background(), 90*time.Second)
+		defer nameCancel()
+		nameOf := waNameLookup(nameCtx, client)
 		resolveLID := func(lidUser string) string { return wm.ResolvePNForLID(req.DeviceID, lidUser) }
 		// Batas kontak paket aktif (Item 7): anggota grup baru berhenti
 		// dibuat saat slot kontak habis; penautan anggota lama tetap jalan.
@@ -295,7 +351,14 @@ func syncGroupsFromWA(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 
 			// upsert tiap anggota jadi kontak, lalu tautkan ke grup
 			for _, phone := range phones {
-				_, _, wasCapped := upsertSyncContactCapped(udb, userID, phone, phone, remPtr)
+				contactName := nameOf(phone)
+				if contactName == "" {
+					contactName = phone
+				}
+				_, nameFilled, wasCapped := upsertSyncContactCapped(udb, userID, phone, contactName, remPtr)
+				if nameFilled {
+					namesFilled++
+				}
 				if wasCapped {
 					capped++
 					continue
@@ -314,6 +377,9 @@ func syncGroupsFromWA(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 		}
 
 		msg := fmt.Sprintf("Sync selesai: %d grup baru, %d grup diperbarui, %d anggota ditautkan", groupsAdded, groupsUpdated, membersLinked)
+		if namesFilled > 0 {
+			msg += fmt.Sprintf(", %d nama kontak dilengkapi", namesFilled)
+		}
 		if membersUnresolved > 0 {
 			msg += fmt.Sprintf(", %d peserta dilewati (WhatsApp menyembunyikan nomornya)", membersUnresolved)
 		}
@@ -322,6 +388,7 @@ func syncGroupsFromWA(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 			"groupsUpdated":     groupsUpdated,
 			"membersLinked":     membersLinked,
 			"membersUnresolved": membersUnresolved,
+			"namesFilled":       namesFilled,
 			"skippedDueToLimit": capped,
 			"message":           msg,
 		})
