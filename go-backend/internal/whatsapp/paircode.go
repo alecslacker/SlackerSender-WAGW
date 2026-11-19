@@ -156,7 +156,7 @@ func (m *Manager) newPairingClient(sess *SessionState) (*whatsmeow.Client, error
 		return nil, errors.New("gagal menyiapkan sesi WhatsApp")
 	}
 
-	store.DeviceProps.Os = proto.String("WaGataway")
+	store.DeviceProps.Os = proto.String("SlackerSender")
 	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_CHROME.Enum()
 
 	client := whatsmeow.NewClient(deviceStore, waLog.Noop)

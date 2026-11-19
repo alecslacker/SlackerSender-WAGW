@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Aldi1963/wagataway/internal/config"
 	"github.com/Aldi1963/wagataway/internal/database/models"
 	"github.com/Aldi1963/wagataway/internal/middleware"
 	"github.com/Aldi1963/wagataway/internal/rls"
@@ -164,7 +165,7 @@ func buildInvoicePDF(tx models.Transaction) *gofpdf.Fpdf {
 	if tx.PaidAt != nil && !tx.PaidAt.IsZero() {
 		paidAt = *tx.PaidAt
 	}
-	planName := "Paket WaGataway"
+	planName := "Paket SlackerSender"
 	durasi := 30
 	if tx.Plan != nil {
 		if tx.Plan.Name != "" {
@@ -181,13 +182,13 @@ func buildInvoicePDF(tx models.Transaction) *gofpdf.Fpdf {
 	pdf.SetXY(L, 14)
 	pdf.SetFont("Helvetica", "B", 22)
 	pdf.SetTextColor(navyR, navyG, navyB)
-	pdf.Cell(95, 9, "WaGataway")
+	pdf.Cell(95, 9, "SlackerSender")
 	pdf.SetXY(L, 23.5)
 	pdf.SetFont("Helvetica", "", 9)
 	pdf.SetTextColor(100, 116, 139)
 	pdf.Cell(95, 5, "Jakarta, Indonesia")
 	pdf.SetXY(L, 28.5)
-	pdf.Cell(95, 5, "wa.clipku.com")
+	pdf.Cell(95, 5, config.PublicHost())
 
 	pdf.SetXY(R-95, 13)
 	pdf.SetFont("Helvetica", "B", 26)
@@ -324,7 +325,7 @@ func buildInvoicePDF(tx models.Transaction) *gofpdf.Fpdf {
 	pdf.SetXY(bx, y+13)
 	pdf.SetFont("GreatVibes", "", 36)
 	pdf.SetTextColor(navyR, navyG, navyB)
-	pdf.Cell(72, 17, "WaGataway")
+	pdf.Cell(72, 17, "SlackerSender")
 	pdf.SetXY(bx, y+33)
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.SetTextColor(30, 41, 59)
@@ -332,7 +333,7 @@ func buildInvoicePDF(tx models.Transaction) *gofpdf.Fpdf {
 	pdf.SetXY(bx, y+39)
 	pdf.SetFont("Helvetica", "", 9)
 	pdf.SetTextColor(100, 116, 139)
-	pdf.Cell(72, 5, "Finance - WaGataway")
+	pdf.Cell(72, 5, "Finance - SlackerSender")
 	y += 52
 
 	// ── Catatan kaki ──
@@ -343,7 +344,7 @@ func buildInvoicePDF(tx models.Transaction) *gofpdf.Fpdf {
 	pdf.SetXY(L, y)
 	pdf.SetFont("Helvetica", "", 8)
 	pdf.SetTextColor(148, 163, 184)
-	pdf.MultiCell(cw, 4.5, "Dokumen ini dibuat otomatis oleh sistem WaGataway. Simpan nomor invoice untuk keperluan administrasi.", "", "L", false)
+	pdf.MultiCell(cw, 4.5, "Dokumen ini dibuat otomatis oleh sistem SlackerSender. Simpan nomor invoice untuk keperluan administrasi.", "", "L", false)
 
 	return pdf
 }

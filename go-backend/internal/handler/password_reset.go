@@ -148,15 +148,15 @@ func sendResetEmail(cfg *config.Config, to, name, resetURL string) error {
 	}
 	from := cfg.SMTPFrom
 	if from == "" {
-		from = "WaGataway <noreply@wagataway.com>"
+		from = "SlackerSender <noreply@wagataway.com>"
 	}
-	subject := "Reset Password WaGataway"
+	subject := "Reset Password SlackerSender"
 	body := fmt.Sprintf("Halo %s,\r\n\r\n"+
-		"Kami menerima permintaan reset password untuk akun WaGataway Anda.\r\n"+
+		"Kami menerima permintaan reset password untuk akun SlackerSender Anda.\r\n"+
 		"Klik link berikut untuk membuat password baru (berlaku 30 menit):\r\n\r\n"+
 		"%s\r\n\r\n"+
 		"Jika Anda tidak meminta ini, abaikan email ini.\r\n\r\n"+
-		"Salam,\r\nTim WaGataway\r\n", name, resetURL)
+		"Salam,\r\nTim SlackerSender\r\n", name, resetURL)
 
 	msg := []byte(fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n%s", from, to, subject, body))
 

@@ -65,7 +65,7 @@ func trackLogin(db *gorm.DB, waManager *whatsapp.Manager, user *models.User, c *
 		Order("is_default DESC, id ASC").First(&dev).Error; err != nil {
 		return
 	}
-	msg := fmt.Sprintf("[WaGataway] Login baru terdeteksi di akun %s dari IP %s pada %s. Bukan Anda? Segera amankan akun via Pengaturan > Keamanan.", user.Email, ip, waktu)
+	msg := fmt.Sprintf("[SlackerSender] Login baru terdeteksi di akun %s dari IP %s pada %s. Bukan Anda? Segera amankan akun via Pengaturan > Keamanan.", user.Email, ip, waktu)
 	if err := waManager.SendMessageNoQuota(dev.ID, notifyWA, "text", msg, ""); err != nil {
 		log.Warn().Err(err).Uint("user", user.ID).Msg("notifikasi login baru via WA gagal")
 	}

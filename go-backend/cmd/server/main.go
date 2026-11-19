@@ -29,6 +29,12 @@ func main() {
 	// Load config
 	cfg := config.Load()
 
+	// Sub-perintah CLI (tanpa menyalakan server HTTP):
+	//   ./server make-admin <email>  → angkat admin pertama
+	if len(os.Args) > 1 {
+		os.Exit(runCommand(cfg, os.Args[1:]))
+	}
+
 	log.Info().Str("app", cfg.AppName).Msg("Starting server...")
 
 	// Connect database

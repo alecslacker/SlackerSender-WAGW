@@ -104,6 +104,13 @@ func upsertAIConnection(db *gorm.DB) gin.HandlerFunc {
 		if !service.IsBaseURLEditable(prov) {
 			baseURL = "" // provider fixed: abaikan base URL kiriman
 		}
+		// Base URL berasal dari input user → tolak yang menunjuk ke alamat internal (SSRF).
+		if baseURL != "" {
+			if err := security.ValidateOutboundURL(baseURL); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"message": "Base URL ditolak: " + err.Error()})
+				return
+			}
+		}
 
 		var conn models.AIConnection
 		// Unscoped: temukan juga baris yang soft-deleted agar bisa dihidupkan
@@ -201,6 +208,13 @@ func testAIConnection(db *gorm.DB) gin.HandlerFunc {
 		}
 		if model == "" {
 			model = service.DefaultModelFor(service.AIProvider(provider))
+		}
+
+		if baseURL != "" {
+			if err := security.ValidateOutboundURL(baseURL); err != nil {
+				c.JSON(http.StatusOK, gin.H{"ok": false, "message": "Base URL ditolak: " + err.Error()})
+				return
+			}
 		}
 
 		svc := service.NewAIServiceForConnection(service.AIProvider(provider), apiKey, baseURL)

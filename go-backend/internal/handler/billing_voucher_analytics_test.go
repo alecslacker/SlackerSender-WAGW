@@ -29,8 +29,10 @@ func anlTestDB(t *testing.T) *gorm.DB {
 
 func anlUser(t *testing.T, db *gorm.DB, suffix string) models.User {
 	t.Helper()
+	// UUID dibiarkan kosong → hook BeforeCreate mengisi uuid.New(). UUID dari
+	// time.Now().UnixNano() kembar di Windows (resolusi jam kasar) sehingga
+	// 5 user dalam satu loop bertabrakan di idx_users_uuid.
 	u := models.User{
-		UUID:  fmt.Sprintf("00000000-0000-4000-8000-%012d", time.Now().UnixNano()%1000000000000),
 		Name:  "Anl " + suffix,
 		Email: fmt.Sprintf("anl-%s@test.local", suffix),
 		Plan:  "free",

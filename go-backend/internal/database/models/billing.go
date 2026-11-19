@@ -161,7 +161,7 @@ type CustomerInvoiceItem struct {
 	Price       int64  `json:"price"` // harga satuan
 }
 
-// CustomerInvoice adalah tagihan ke PELANGGAN (bukan langganan WaGataway):
+// CustomerInvoice adalah tagihan ke PELANGGAN (bukan langganan SlackerSender):
 // dibuat dari panel, dibayar via QRIS Clipku Pay, status lunas terdeteksi
 // otomatis lewat webhook yang sama dengan langganan (dicocokkan via
 // ExternalID + nominal, mode ketat). Items disimpan sebagai JSON di kolom

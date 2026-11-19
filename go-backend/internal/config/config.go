@@ -3,10 +3,78 @@ package config
 import (
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
 )
+
+// FallbackPublicURL dipakai bila APP_URL tidak diisi. Sengaja localhost:
+// URL pada pesan ke pelanggan / redirect OAuth / invoice TIDAK boleh
+// diam-diam menunjuk ke domain pihak lain. Production wajib set APP_URL.
+const FallbackPublicURL = "http://localhost:8080"
+
+var publicURL = FallbackPublicURL
+
+// SetPublicURL menyimpan URL publik aplikasi (dipanggil sekali di Load).
+func SetPublicURL(u string) {
+	u = strings.TrimRight(strings.TrimSpace(u), "/")
+	if u == "" {
+		u = FallbackPublicURL
+	}
+	publicURL = u
+}
+
+// PublicURL mengembalikan URL publik tanpa garis miring akhir, mis.
+// "https://wasender.slackercode.us". Dipakai pesan kuota, pengingat
+// langganan, invoice PDF, redirect OAuth, dan webhook pembayaran.
+func PublicURL() string { return publicURL }
+
+// PublicHost mengembalikan host dari URL publik (tanpa skema), mis.
+// "wasender.slackercode.us" — untuk tampilan ringkas seperti kop invoice.
+func PublicHost() string {
+	h := publicURL
+	if i := strings.Index(h, "://"); i >= 0 {
+		h = h[i+3:]
+	}
+	if i := strings.IndexAny(h, "/?#"); i >= 0 {
+		h = h[:i]
+	}
+	return h
+}
+
+// Default backend AI (9router milik Duta Corpora). Bisa diganti lewat env
+// AI_DEFAULT_BASE_URL / AI_DEFAULT_MODEL tanpa mengubah kode.
+const (
+	FallbackAIBaseURL = "https://9router.dutacorpora.co.id/v1"
+	FallbackAIModel   = "ag/gemini-3.8-flash-low"
+)
+
+var (
+	aiBaseURL = FallbackAIBaseURL
+	aiModel   = FallbackAIModel
+)
+
+// SetAIDefaults menyimpan base URL (tanpa garis miring akhir) dan model bawaan
+// backend AI (dipanggil sekali di Load).
+func SetAIDefaults(baseURL, model string) {
+	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if baseURL == "" {
+		baseURL = FallbackAIBaseURL
+	}
+	model = strings.TrimSpace(model)
+	if model == "" {
+		model = FallbackAIModel
+	}
+	aiBaseURL, aiModel = baseURL, model
+}
+
+// AIDefaultBaseURL mengembalikan base URL bawaan backend AI, mis.
+// "https://9router.dutacorpora.co.id/v1".
+func AIDefaultBaseURL() string { return aiBaseURL }
+
+// AIDefaultModel mengembalikan model bawaan backend AI.
+func AIDefaultModel() string { return aiModel }
 
 type Config struct {
 	// Server
@@ -64,10 +132,13 @@ func Load() *Config {
 			"Set JWT_SECRET yang kuat (acak, min 32 karakter) di environment/.env sebelum menjalankan server.")
 	}
 
+	SetPublicURL(getEnv("APP_URL", FallbackPublicURL))
+	SetAIDefaults(getEnv("AI_DEFAULT_BASE_URL", FallbackAIBaseURL), getEnv("AI_DEFAULT_MODEL", FallbackAIModel))
+
 	return &Config{
 		Port:    getEnv("PORT", "8080"),
 		GinMode: getEnv("GIN_MODE", "debug"),
-		AppName: getEnv("APP_NAME", "WaGataway"),
+		AppName: getEnv("APP_NAME", "SlackerSender"),
 		AppURL:  getEnv("APP_URL", "http://localhost:8080"),
 
 		DatabaseURL: getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/wagataway?sslmode=disable"),
@@ -91,8 +162,9 @@ func Load() *Config {
 		PaymentSecret: getEnv("PAYMENT_GATEWAY_SECRET", ""),
 
 		ClipkuPayAPIKey:     getEnv("CLIPKUPAY_API_KEY", ""),
-		ClipkuPayBaseURL:    getEnv("CLIPKUPAY_BASE_URL", "https://m.clipku.com"),
-		ClipkuPayWebhookURL: getEnv("CLIPKUPAY_WEBHOOK_URL", "https://wa.clipku.com/api/billing/clipkupay/webhook"),
+		ClipkuPayBaseURL:    strings.TrimRight(getEnv("CLIPKUPAY_BASE_URL", "https://m.clipku.com"), "/"),
+		// Default mengikuti APP_URL (bukan domain pihak lain).
+		ClipkuPayWebhookURL: getEnv("CLIPKUPAY_WEBHOOK_URL", PublicURL()+"/api/billing/clipkupay/webhook"),
 
 		TelegramBotToken: getEnv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramChatID:   getEnv("TELEGRAM_CHAT_ID", ""),

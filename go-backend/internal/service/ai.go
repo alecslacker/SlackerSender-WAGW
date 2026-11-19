@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/Aldi1963/wagataway/internal/config"
+	"github.com/Aldi1963/wagataway/internal/security"
 )
 
 // AIProvider represents an AI provider
@@ -33,8 +36,19 @@ var ProviderDefaults = map[AIProvider]struct {
 	ProviderAnthropic:  {"https://api.anthropic.com/v1", "claude-3-5-haiku-20241022"},
 	ProviderDeepSeek:   {"https://api.deepseek.com", "deepseek-chat"},
 	ProviderZAI:        {"https://api.z.ai/api/paas/v4", "glm-4.5"},
-	ProviderNineRouter: {"https://ai.clipku.com/v1", "default"},
+	// 9router: base URL & model diambil dari config (AI_DEFAULT_BASE_URL /
+	// AI_DEFAULT_MODEL) lewat baseURLDefaultFor/DefaultModelFor — nilai di
+	// sini hanya placeholder karena map dibuat sebelum config dimuat.
+	ProviderNineRouter: {"", ""},
 	ProviderCustom:     {"", "default"},
+}
+
+// defaultBaseURLFor mengembalikan base URL bawaan provider; 9router mengikuti config.
+func defaultBaseURLFor(p AIProvider) string {
+	if p == ProviderNineRouter {
+		return config.AIDefaultBaseURL()
+	}
+	return ProviderDefaults[p].BaseURL
 }
 
 // CuratedModels: daftar model yang ditawarkan di dropdown UI per provider.
@@ -74,12 +88,12 @@ type AIService struct {
 	HTTPClient *http.Client
 }
 
-// aiHTTPClient: client dengan proxy dari env (wajib di sandbox Muse agar
-// TLS ke API eksternal tidak gagal) + timeout.
+// aiHTTPClient: client anti-SSRF (menolak dial ke IP internal, tidak mengikuti
+// redirect). Base URL AI boleh diubah user, jadi tidak boleh bisa diarahkan
+// ke 127.0.0.1 / jaringan privat / metadata cloud. Bila HTTPS_PROXY terisi,
+// SafeClient otomatis lewat proxy tersebut.
 func aiHTTPClient() *http.Client {
-	tr := http.DefaultTransport.(*http.Transport).Clone()
-	tr.Proxy = http.ProxyFromEnvironment
-	return &http.Client{Timeout: 60 * time.Second, Transport: tr}
+	return security.NewSafeClient(60 * time.Second)
 }
 
 // NewAIService creates a new AI service (legacy: keys dari env)
@@ -106,8 +120,8 @@ func (s *AIService) baseURLFor(p AIProvider) string {
 	if s.BaseURL != "" {
 		return strings.TrimSuffix(s.BaseURL, "/")
 	}
-	if d, ok := ProviderDefaults[p]; ok {
-		return d.BaseURL
+	if _, ok := ProviderDefaults[p]; ok {
+		return defaultBaseURLFor(p)
 	}
 	return ""
 }

@@ -77,11 +77,8 @@ func oauthProviders() map[string]oauthProvider {
 }
 
 func oauthRedirectURI(cfg *config.Config, provider string) string {
-	base := strings.TrimRight(strings.TrimSpace(cfg.AppURL), "/")
-	if base == "" {
-		base = "https://wa.clipku.com"
-	}
-	return base + "/api/auth/oauth/" + provider + "/callback"
+	_ = cfg // URL publik diambil dari config.PublicURL() (APP_URL)
+	return config.PublicURL() + "/api/auth/oauth/" + provider + "/callback"
 }
 
 // oauthConfigured memeriksa apakah provider sudah dikonfigurasi.
@@ -339,21 +336,13 @@ func handleOAuthCallback(cfg *config.Config, db *gorm.DB, waManager *whatsapp.Ma
 		issueSession(db, user.ID, jti, c)
 		trackLogin(db, waManager, user, c)
 
-		base := strings.TrimRight(strings.TrimSpace(cfg.AppURL), "/")
-		if base == "" {
-			base = "https://wa.clipku.com"
-		}
-		c.Redirect(http.StatusFound, base+"/oauth/callback?token="+url.QueryEscape(token))
+		c.Redirect(http.StatusFound, config.PublicURL()+"/oauth/callback?token="+url.QueryEscape(token))
 	}
 }
 
 // oauthFail mengarahkan ke frontend dengan pesan error.
 func oauthFail(c *gin.Context, cfg *config.Config, msg string) {
-	base := strings.TrimRight(strings.TrimSpace(cfg.AppURL), "/")
-	if base == "" {
-		base = "https://wa.clipku.com"
-	}
-	c.Redirect(http.StatusFound, base+"/login?oauth_error="+url.QueryEscape(msg))
+	c.Redirect(http.StatusFound, config.PublicURL()+"/login?oauth_error="+url.QueryEscape(msg))
 }
 
 // findOrCreateOAuthUser mencari user berdasar provider ID / email, atau membuat baru.

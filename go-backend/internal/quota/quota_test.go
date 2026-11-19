@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Aldi1963/wagataway/internal/config"
 	"github.com/Aldi1963/wagataway/internal/database/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -538,7 +539,7 @@ func TestCheckExpiredBlocked(t *testing.T) {
 		t.Errorf("SubExpired=%v SubState=%q Code=%q, want true/expired/SUBSCRIPTION_EXPIRED",
 			qr.SubExpired, qr.SubState, qr.Code())
 	}
-	want := "Langganan berakhir. Perpanjang di https://wa.clipku.com/billing"
+	want := "Langganan berakhir. Perpanjang di " + config.PublicURL() + "/billing"
 	if msg := ExceededMessage(qr); msg != want {
 		t.Errorf("pesan = %q, want %q", msg, want)
 	}

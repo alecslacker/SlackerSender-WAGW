@@ -58,6 +58,10 @@ func auditTestDB(t *testing.T) *gorm.DB {
 	}
 	sqlDB.SetMaxOpenConns(25)
 	sqlDB.SetMaxIdleConns(10)
+	// Tutup pool saat test selesai: helper ini dipanggil ~75x per run paket
+	// handler — tanpa Close, koneksi menumpuk sampai max_connections Postgres
+	// habis dan test DB sisanya ter-skip diam-diam ("connection slots reserved").
+	t.Cleanup(func() { _ = sqlDB.Close() })
 	rls.Register(db)
 	return db
 }

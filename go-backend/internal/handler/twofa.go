@@ -22,7 +22,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const twoFAIssuer = "WaGataway"
+const twoFAIssuer = "SlackerSender"
 const twoFAPendingTTL = 5 * time.Minute
 
 // registerTwoFARoutes menggantikan stub di stubs.go dengan implementasi nyata.

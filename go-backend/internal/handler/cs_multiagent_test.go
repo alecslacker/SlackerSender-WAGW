@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -60,17 +61,28 @@ func seedCSOwner(t *testing.T, db *gorm.DB) models.User {
 	// test lain me-TRUNCATE users RESTART IDENTITY — ID sequence kecil
 	// bisa bertabrakan antar run paralel. Pola yang sama dipakai test lain
 	// di paket ini (91xxx-94xxx).
-	id := uint(96000 + time.Now().UnixNano()%2000)
+	//
+	// ID berasal dari penghitung atomik + offset waktu, BUKAN time.Now()%2000:
+	// jam Windows beresolusi ~50µs sehingga hanya ±20 dari 2000 slot yang
+	// pernah muncul dan 6 pemanggil dalam satu run hampir pasti bertabrakan
+	// ("users_pkey"). Penghitung menjamin unik dalam satu proses; offset
+	// menit menghindari sisa baris dari run sebelumnya pada DB yang sama.
+	id := uint(96000 + (csOwnerSeq.Add(1)+uint32(time.Now().Unix()/60))%4000)
 	u := models.User{
 		ID:   id,
 		Name: "Owner CS", Email: fmt.Sprintf("owner-cs-%d@example.com", time.Now().UnixNano()),
 		Password: "x", Role: "user", Plan: "pro",
 	}
+	// Hapus sisa baris ber-ID sama dari run terdahulu (hard delete) lalu buat.
+	db.Unscoped().Where("id = ?", id).Delete(&models.User{})
 	if err := db.Create(&u).Error; err != nil {
 		t.Fatalf("seed owner gagal: %v", err)
 	}
 	return u
 }
+
+// csOwnerSeq: penghitung per-proses untuk ID owner seed (lihat seedCSOwner).
+var csOwnerSeq atomic.Uint32
 
 // uniqueCSPhone menghasilkan nomor unik per run agar percakapan test tidak
 // bertabrakan antar run paralel pada DB test yang sama.

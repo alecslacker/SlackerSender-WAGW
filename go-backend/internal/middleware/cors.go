@@ -1,11 +1,15 @@
 package middleware
 
 import (
+	"github.com/Aldi1963/wagataway/internal/config"
 	"github.com/gin-gonic/gin"
 )
 
-// Origin eksplisit yang diizinkan mengakses API dari browser.
-const allowedOrigin = "https://wa.clipku.com"
+// allowedOrigin: satu-satunya origin browser yang boleh memanggil API lintas
+// origin = URL publik aplikasi itu sendiri (APP_URL). Dulu di-hardcode ke
+// domain lain sehingga di domain baru semua permintaan lintas origin diblokir
+// browser, sementara domain asal tetap diizinkan.
+func allowedOrigin() string { return config.PublicURL() }
 
 func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -13,7 +17,7 @@ func CORS() gin.HandlerFunc {
 
 		// Browser: hanya origin eksplisit yang diizinkan.
 		// Non-browser (curl, server-to-server): tidak ada header Origin, tetap izinkan.
-		if origin == allowedOrigin {
+		if origin != "" && origin == allowedOrigin() {
 			c.Header("Access-Control-Allow-Origin", origin)
 			c.Header("Access-Control-Allow-Credentials", "true")
 			c.Header("Vary", "Origin")

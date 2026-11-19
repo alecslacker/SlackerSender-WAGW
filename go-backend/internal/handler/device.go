@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/base64"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,6 +12,8 @@ import (
 	"github.com/Aldi1963/wagataway/internal/security"
 	"github.com/Aldi1963/wagataway/internal/whatsapp"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
+	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 )
 
@@ -321,8 +324,18 @@ func getDeviceQR(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 			return
 		}
 
+		// Render QR di server (PNG data URL) — string pairing WhatsApp adalah
+		// rahasia sesi, tidak boleh dikirim ke layanan QR pihak ketiga.
+		qrPNG, err := qrcode.Encode(qr, qrcode.Medium, 320)
+		if err != nil {
+			log.Error().Err(err).Msg("gagal render QR perangkat")
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Gagal membuat QR code"})
+			return
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"qr":        qr,
+			"qrImage":   "data:image/png;base64," + base64.StdEncoding.EncodeToString(qrPNG),
 			"expiresAt": expiresAt,
 		})
 	}

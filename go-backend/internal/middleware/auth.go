@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -33,6 +34,54 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+// IsBlockedStatus: akun "banned" dan "suspended" tidak boleh memakai aplikasi
+// (selaras login Google di oauth.go yang menolak keduanya).
+func IsBlockedStatus(status string) bool {
+	return status == "banned" || status == "suspended"
+}
+
+// resolveLiveRole membaca role & status TERBARU pemilik akun dari database.
+// Role di token/tiket/API key hanyalah salinan saat login — tanpa ini admin
+// baru harus login ulang, dan admin yang diturunkan / akun yang diblokir
+// tetap punya akses sampai token kedaluwarsa (24 jam).
+//
+// Role sub-akun tim ("team_*") TIDAK diganti role pemilik: bila pemilik
+// admin, anggota timnya tidak boleh ikut mewarisi akses panel admin.
+//
+// ok=false → request sudah dihentikan (akun hilang/diblokir/DB gagal).
+func resolveLiveRole(c *gin.Context, userID uint, tokenRole string) (string, bool) {
+	if apiKeyDB == nil {
+		return tokenRole, true
+	}
+	var u models.User
+	if err := apiKeyDB.Select("id", "role", "status").Where("id = ?", userID).First(&u).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"message": "Akun tidak ditemukan, silakan login ulang",
+				"code":    "ACCOUNT_NOT_FOUND",
+			})
+			return "", false
+		}
+		// Fail-closed: lebih aman menolak daripada meloloskan role basi.
+		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
+			"message": "Gagal memverifikasi akun, coba lagi sebentar",
+			"code":    "AUTH_UNAVAILABLE",
+		})
+		return "", false
+	}
+	if IsBlockedStatus(u.Status) {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": "Akun dinonaktifkan",
+			"code":    "ACCOUNT_DISABLED",
+		})
+		return "", false
+	}
+	if strings.HasPrefix(tokenRole, "team_") {
+		return tokenRole, true
+	}
+	return u.Role, true
+}
+
 func AuthRequired(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// API key auth (alternatif JWT) untuk integrasi developer:
@@ -55,11 +104,23 @@ func AuthRequired(cfg *config.Config) gin.HandlerFunc {
 			}
 			now := time.Now()
 			apiKeyDB.Model(&ak).Update("last_used", now)
-			email, role := "", "user"
 			var user models.User
-			if err := apiKeyDB.Where("id = ?", ak.UserID).First(&user).Error; err == nil {
-				email, role = user.Email, user.Role
+			if err := apiKeyDB.Select("id", "email", "role", "status").Where("id = ?", ak.UserID).First(&user).Error; err != nil {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"message": "Pemilik API key tidak ditemukan",
+					"code":    "INVALID_API_KEY",
+				})
+				return
 			}
+			// Akun pemilik diblokir → API key-nya ikut mati.
+			if IsBlockedStatus(user.Status) {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"message": "Akun dinonaktifkan",
+					"code":    "ACCOUNT_DISABLED",
+				})
+				return
+			}
+			email, role := user.Email, user.Role
 			c.Set("userID", ak.UserID)
 			c.Set("email", email)
 			c.Set("role", role)
@@ -84,9 +145,13 @@ func AuthRequired(cfg *config.Config) gin.HandlerFunc {
 					})
 					return
 				}
+				role, ok := resolveLiveRole(c, t.UserID, t.Role)
+				if !ok {
+					return
+				}
 				c.Set("userID", t.UserID)
 				c.Set("email", t.Email)
-				c.Set("role", t.Role)
+				c.Set("role", role)
 				c.Next()
 				return
 			}
@@ -150,10 +215,17 @@ func AuthRequired(cfg *config.Config) gin.HandlerFunc {
 			c.Set("sessionJTI", claims.ID)
 		}
 
+		// Role & status dibaca langsung dari DB: perubahan role (naik/turun
+		// admin) dan blokir akun berlaku seketika, tanpa login ulang.
+		role, ok := resolveLiveRole(c, claims.UserID, claims.Role)
+		if !ok {
+			return
+		}
+
 		// Set user context
 		c.Set("userID", claims.UserID)
 		c.Set("email", claims.Email)
-		c.Set("role", claims.Role)
+		c.Set("role", role)
 
 		c.Next()
 	}

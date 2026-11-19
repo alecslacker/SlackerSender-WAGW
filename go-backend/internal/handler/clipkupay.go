@@ -43,6 +43,7 @@ import (
 //   atau tidak diketahui (mode ketat).
 
 type clipkuPay struct {
+	baseURL    string // dari CLIPKUPAY_BASE_URL (tanpa garis miring akhir)
 	webhookURL string
 	apiKey     string
 	appURL     string
@@ -63,6 +64,7 @@ func getenvClipku(key string) string {
 func newClipkuPay(cfg *config.Config, db *gorm.DB) clipkuPay {
 	wh := clipkuWebhookURLFromSettings(db, strings.TrimSpace(cfg.ClipkuPayWebhookURL))
 	return clipkuPay{
+		baseURL:    strings.TrimSuffix(strings.TrimSpace(cfg.ClipkuPayBaseURL), "/"),
 		webhookURL: wh,
 		apiKey:     clipkuAPIKeyFromSettings(db),
 		appURL:     strings.TrimSuffix(strings.TrimSpace(cfg.AppURL), "/"),
@@ -161,8 +163,12 @@ func (k clipkuPay) directCall(method, action, query string, body any) (map[strin
 		}
 		bodyReader = bytes.NewReader(b)
 	}
+	base := k.baseURL
+	if base == "" {
+		base = "https://m.clipku.com"
+	}
 	req, err := http.NewRequest(method,
-		"https://m.clipku.com/api/?action="+action+query, bodyReader)
+		base+"/api/?action="+action+query, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("clipkupay: %s", err.Error())
 	}
@@ -243,8 +249,8 @@ func clipkuDataOf(out map[string]any) *clipkuTxData {
 // mentah (string "00020101..."), BUKAN URL gambar. Prioritas:
 //  1. Bangun gambar QR dari EMV secara lokal (tanpa layanan pihak ketiga)
 //     → data URL PNG yang langsung bisa dipakai di <img>.
-//  2. Fallback: URL gambar via api.qrserver.com (perilaku lama).
-//  3. Bila sudah berupa URL http(s), dipakai apa adanya.
+//  2. Bila sudah berupa URL http(s), dipakai apa adanya.
+//  Tidak ada fallback ke layanan QR pihak ketiga; render gagal → "".
 func normalizeQrURL(qr string) string {
 	qr = strings.TrimSpace(qr)
 	if qr == "" {
@@ -253,10 +259,8 @@ func normalizeQrURL(qr string) string {
 	if strings.HasPrefix(qr, "http://") || strings.HasPrefix(qr, "https://") {
 		return qr
 	}
-	if dataURL := qrisQRDataURL(qr); dataURL != "" {
-		return dataURL
-	}
-	return "https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=0&data=" + url.QueryEscape(qr)
+	// Render lokal saja — payload QRIS tidak dikirim ke layanan QR pihak ketiga.
+	return qrisQRDataURL(qr)
 }
 
 // qrisQRDataURL membuat gambar QR PNG dari payload EMV QRIS memakai library
@@ -298,20 +302,26 @@ func fetchQrisURL(paymentURL string) string {
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	html := string(raw)
-	// pola: https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=0&data=<EMV>
+	// pola di halaman pay.php: https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=0&data=<EMV>
+	// (hanya dibaca untuk mengambil <EMV>; kita tidak memanggil host itu)
 	re := regexp.MustCompile(`https://api\.qrserver\.com/v1/create-qr-code/\?size=320x320(?:&amp;|&)margin=0(?:&amp;|&)data=([0-9A-Za-z%\+\._\-~]+)`)
 	m := re.FindStringSubmatch(html)
 	if len(m) < 2 {
 		return ""
 	}
-	return "https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=0&data=" + m[1]
+	// Ambil payload EMV-nya saja, lalu render QR lokal (tanpa api.qrserver.com).
+	emv, err := url.QueryUnescape(m[1])
+	if err != nil {
+		return ""
+	}
+	return qrisQRDataURL(emv)
 }
 
 // createTransaction membuat transaksi pembayaran di Clipku Pay.
 func (k clipkuPay) createTransaction(orderID string, amount int64, customerName, customerEmail string) (*clipkuTxData, error) {
 	var out map[string]any
 	var err error
-	// Setelah bayar sukses, halaman Clipku Pay redirect kembali ke WaGataway
+	// Setelah bayar sukses, halaman Clipku Pay redirect kembali ke SlackerSender
 	// (halaman sukses mereka memanggil window.location.replace(d.redirect_url)).
 	redirectURL := ""
 	if k.appURL != "" {

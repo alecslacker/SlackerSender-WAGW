@@ -1,10 +1,10 @@
--- Seed 5 paket WaGataway (idempotent: aman dijalankan berulang)
+-- Seed 5 paket SlackerSender (idempotent: aman dijalankan berulang)
 -- price dalam rupiah, duration dalam hari, max_messages per hari, monthly_message_limit per bulan (0 = unlimited)
 
 INSERT INTO plans (name, slug, description, price, duration, max_devices, max_messages, monthly_message_limit, max_contacts, max_auto_reply, max_bulk, features, is_active, sort_order, created_at, updated_at)
 VALUES
 ('Free', 'free',
- 'Paket gratis untuk mencoba semua fitur dasar WaGataway.',
+ 'Paket gratis untuk mencoba semua fitur dasar SlackerSender.',
  0, 30, 1, 1000, 3000, 500, 5, 100,
  '["Kirim personal","Pesan terjadwal","Pesan berulang","Template pesan","Autoreply keyword","Webhook","REST API"]',
  true, 1, NOW(), NOW())

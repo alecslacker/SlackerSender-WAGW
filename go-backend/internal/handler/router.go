@@ -46,11 +46,17 @@ func NewRouter(cfg *config.Config, db *gorm.DB, waManager *whatsapp.Manager) *gi
 	r.Static("/uploads", "./public/uploads")
 	r.Static("/assets", "./web/dist/assets")
 	r.Static("/illustrations", "./web/dist/illustrations")
+	// Animasi hero landing (video loop + poster) hasil render Remotion.
+	r.Static("/hero", "./web/dist/hero")
 	// File root-level untuk SEO/crawler — jangan sampai jatuh ke SPA fallback.
 	r.StaticFile("/robots.txt", "./web/dist/robots.txt")
 	r.StaticFile("/sitemap.xml", "./web/dist/sitemap.xml")
 	r.StaticFile("/og-image.png", "./web/dist/og-image.png")
 	r.StaticFile("/favicon.svg", "./web/dist/favicon.svg")
+	// Identitas SlackerSender: favicon + logo UI + logo partner footer.
+	r.StaticFile("/slackercode.png", "./web/dist/slackercode.png")
+	r.StaticFile("/slackercode-logo.png", "./web/dist/slackercode-logo.png")
+	r.StaticFile("/partner-slackercode.png", "./web/dist/partner-slackercode.png")
 
 	// ── API Routes ─────────────────────────────────────────────────────────
 	api := r.Group("/api")

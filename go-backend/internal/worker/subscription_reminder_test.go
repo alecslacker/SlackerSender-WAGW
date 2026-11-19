@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Aldi1963/wagataway/internal/config"
 	"github.com/Aldi1963/wagataway/internal/database/models"
 )
 
@@ -46,7 +47,7 @@ func TestBuildReminderMessage(t *testing.T) {
 	if !strings.Contains(msg, "3 hari lagi") {
 		t.Errorf("pesan harus menyebut sisa hari, dapat: %q", msg)
 	}
-	if !strings.Contains(msg, "https://wa.clipku.com/billing") {
+	if !strings.Contains(msg, config.PublicURL()+"/billing") {
 		t.Errorf("pesan harus memuat link perpanjang, dapat: %q", msg)
 	}
 

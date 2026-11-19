@@ -9,25 +9,43 @@ import (
 	"unicode/utf8"
 
 	"github.com/Aldi1963/wagataway/internal/database/models"
+	"github.com/Aldi1963/wagataway/internal/middleware"
 	"github.com/Aldi1963/wagataway/internal/quota"
 	"github.com/Aldi1963/wagataway/internal/whatsapp"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-// ── Kompatibilitas WAMP (ppob.clipku.com) ─────────────────────────────────────
+// ── Kompatibilitas WAMP (ppob.clipku.com) + Slackersender ────────────────────
 // PPOB (WampService) POST ke {wamp_url}/send-message dan /send-media dengan
 // field: api_key, sender, number, message (+ url, media_type, caption untuk
 // media). Endpoint ini menerjemahkannya ke pengiriman via device milik
 // pemilik API key. Tidak perlu ubah kode PPOB — cukup isi konfigurasi:
-//   wamp_url        = https://wa.clipku.com
+//   wamp_url        = <APP_URL domain ini, mis. https://wasender.slackercode.us>
 //   wamp_api_key    = API key dari Setting > API Key
 //   wamp_sender     = ID / nomor / nama device pengirim
 //   wamp_status_api = 1
+//
+// Kontrak endpoint juga disamakan dengan API Slackersender (dokumen
+// api-slackersender-global.md): /send-message, /send-media, /send-location,
+// /info-device, /check-number — masing-masing POST (JSON/form) atau GET
+// (query string). Auth via field api_key, respons sukses = HTTP 200 +
+// "status": true. Hanya kontrak pengiriman yang disamakan; fitur lain
+// Slackersender tidak diadopsi.
 
 func registerWampCompatRoutes(r *gin.Engine, db *gorm.DB, wm *whatsapp.Manager) {
+	// POST direkomendasikan (api_key tidak nongol di access log);
+	// GET didaftarkan demi kesamaan kontrak Slackersender.
 	r.POST("/send-message", wampSend(db, wm, false))
+	r.GET("/send-message", wampSend(db, wm, false))
 	r.POST("/send-media", wampSend(db, wm, true))
+	r.GET("/send-media", wampSend(db, wm, true))
+	r.POST("/send-location", wampSendLocation(db, wm))
+	r.GET("/send-location", wampSendLocation(db, wm))
+	r.POST("/info-device", wampInfoDevice(db))
+	r.GET("/info-device", wampInfoDevice(db))
+	r.POST("/check-number", wampCheckNumber(db, wm))
+	r.GET("/check-number", wampCheckNumber(db, wm))
 }
 
 func wampSend(db *gorm.DB, wm *whatsapp.Manager, isMedia bool) gin.HandlerFunc {
@@ -62,7 +80,10 @@ func wampSend(db *gorm.DB, wm *whatsapp.Manager, isMedia bool) gin.HandlerFunc {
 				return
 			}
 			mediaURL = req.URL
-			msgType = "image"
+			// media_type Slackersender: image/video/audio/document.
+			// Kosong / tak dikenal → image (perilaku lama; PPOB yang tidak
+			// mengirim media_type tetap terkirim sebagai gambar).
+			msgType = mapWampMediaType(req.MediaType)
 			content = req.Caption
 			if content == "" {
 				content = req.Message
@@ -77,18 +98,11 @@ func wampSend(db *gorm.DB, wm *whatsapp.Manager, isMedia bool) gin.HandlerFunc {
 			return
 		}
 
-		// Validasi API key -> user.
-		var ak models.ApiKey
-		if err := db.Where("key_hash = ? AND is_active = ?", models.HashAPIKey(req.APIKey), true).First(&ak).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"status": false, "message": "API key tidak valid"})
-			return
+		// Validasi API key -> user (helper bersama semua endpoint compat).
+		ak, ok := authenticateAPIKey(c, db, req.APIKey, "messages:send")
+		if !ok {
+			return // respons error sudah dikirim helper
 		}
-		if ak.ExpiresAt != nil && time.Now().After(*ak.ExpiresAt) {
-			c.JSON(http.StatusUnauthorized, gin.H{"status": false, "message": "API key kedaluwarsa"})
-			return
-		}
-		now := time.Now()
-		db.Model(&ak).Update("last_used", now)
 
 		// Resolve sender -> device milik user.
 		device, err := resolveWampSender(db, ak.UserID, req.Sender)
@@ -191,4 +205,280 @@ func resolveWampSender(db *gorm.DB, userID uint, sender string) (*models.Device,
 	}
 
 	return nil, fmt.Errorf("perangkat pengirim tidak ditemukan")
+}
+
+// authenticateAPIKey memvalidasi api_key (hash) milik endpoint compat,
+// menolak key nonaktif/kedaluwarsa, MENEGAKKAN scope (sama seperti
+// middleware.RequireScope di endpoint native /api/*), lalu memperbarui
+// last_used. Tanpa cek scope, key terbatas (mis. hanya "messages:read")
+// bisa mengirim pesan lewat endpoint compat.
+// Respons error sudah dikirim ke c; ok=false berarti request ditolak.
+func authenticateAPIKey(c *gin.Context, db *gorm.DB, apiKey, scope string) (*models.ApiKey, bool) {
+	var ak models.ApiKey
+	if err := db.Where("key_hash = ? AND is_active = ?", models.HashAPIKey(apiKey), true).First(&ak).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": false, "message": "API key tidak valid"})
+		return nil, false
+	}
+	if ak.ExpiresAt != nil && time.Now().After(*ak.ExpiresAt) {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": false, "message": "API key kedaluwarsa"})
+		return nil, false
+	}
+	if !apiKeyHasScope(ak.Scopes, scope) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status":  false,
+			"message": "API key tidak memiliki akses: " + scope,
+			"code":    "INSUFFICIENT_SCOPE",
+		})
+		return nil, false
+	}
+	// Akun pemilik diblokir/ditangguhkan → API key-nya ikut mati
+	// (sama seperti jalur X-API-Key di middleware.AuthRequired).
+	var owner models.User
+	if err := db.Select("id", "status").Where("id = ?", ak.UserID).First(&owner).Error; err != nil || middleware.IsBlockedStatus(owner.Status) {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": false, "message": "Akun dinonaktifkan", "code": "ACCOUNT_DISABLED"})
+		return nil, false
+	}
+	db.Model(&ak).Update("last_used", time.Now())
+	return &ak, true
+}
+
+// apiKeyHasScope: "full" (atau scopes kosong = key lama) membuka semua akses.
+func apiKeyHasScope(rawScopes, scope string) bool {
+	for _, s := range middleware.ParseAPIKeyScopes(rawScopes) {
+		if s == "full" || s == scope {
+			return true
+		}
+	}
+	return false
+}
+
+// mapWampMediaType menerjemahkan media_type Slackersender ke tipe kirim
+// internal. Kosong / tak dikenal → "image" (perilaku lama PPOB WAMP).
+func mapWampMediaType(mediaType string) string {
+	switch strings.ToLower(strings.TrimSpace(mediaType)) {
+	case "video":
+		return "video"
+	case "audio":
+		return "audio"
+	case "document":
+		return "document"
+	default:
+		return "image"
+	}
+}
+
+// wampSendLocation — kontrak Slackersender /send-location.
+// latitude/longitude dikirim sebagai STRING oleh Slackersender (jaga
+// presisi desimal); di-parse ke float64 sebelum masuk ke SendOptions.
+func wampSendLocation(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			APIKey    string `form:"api_key" json:"api_key"`
+			Sender    string `form:"sender" json:"sender"`
+			Number    string `form:"number" json:"number"`
+			Latitude  string `form:"latitude" json:"latitude"`
+			Longitude string `form:"longitude" json:"longitude"`
+		}
+		_ = c.ShouldBind(&req)
+		if req.APIKey == "" {
+			req.APIKey = c.GetHeader("X-API-Key")
+		}
+
+		if req.APIKey == "" || req.Number == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"status": false, "message": "api_key dan number wajib diisi"})
+			return
+		}
+		if req.Latitude == "" || req.Longitude == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"status": false, "message": "latitude dan longitude wajib diisi"})
+			return
+		}
+		lat, err := strconv.ParseFloat(strings.TrimSpace(req.Latitude), 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": false, "message": "latitude tidak valid"})
+			return
+		}
+		lon, err := strconv.ParseFloat(strings.TrimSpace(req.Longitude), 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": false, "message": "longitude tidak valid"})
+			return
+		}
+
+		ak, ok := authenticateAPIKey(c, db, req.APIKey, "messages:send")
+		if !ok {
+			return
+		}
+
+		device, err := resolveWampSender(db, ak.UserID, req.Sender)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"status": false, "message": err.Error()})
+			return
+		}
+
+		// Lokasi juga pesan keluar → ikut aturan kuota (lihat paket quota).
+		if qr, qerr := quota.Check(db, ak.UserID); qerr == nil && !qr.Allowed {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"status":  false,
+				"message": quota.ExceededMessage(qr),
+				"code":    "QUOTA_EXCEEDED",
+			})
+			return
+		}
+
+		content := fmt.Sprintf("%f,%f", lat, lon)
+		msg := models.Message{
+			UserID:   ak.UserID,
+			DeviceID: device.ID,
+			To:       req.Number,
+			Type:     "location",
+			Content:  content,
+			Status:   "pending",
+			Via:      "api",
+		}
+		if err := db.Create(&msg).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": false, "message": "Gagal menyimpan pesan"})
+			return
+		}
+
+		campaignID := "wamp-" + time.Now().Format("20060102150405")
+		go func() {
+			waID, err := wm.SendMessageWithOptions(device.ID, req.Number, whatsapp.SendOptions{
+				Type:      "location",
+				Latitude:  lat,
+				Longitude: lon,
+			})
+			if err != nil {
+				db.Model(&msg).Updates(map[string]interface{}{"status": "failed", "error_msg": err.Error()})
+				recordReport(db, ak.UserID, device.ID, campaignID, req.Number, "", "failed", err.Error())
+			} else {
+				now := time.Now()
+				db.Model(&msg).Updates(map[string]interface{}{"status": "sent", "message_id": waID, "sent_at": &now})
+				recordReport(db, ak.UserID, device.ID, campaignID, req.Number, waID, "sent", "")
+			}
+		}()
+
+		c.JSON(http.StatusOK, gin.H{"status": true, "message": "Pesan sedang dikirim", "id": msg.ID})
+	}
+}
+
+// wampInfoDevice — kontrak Slackersender /info-device: status kesehatan
+// perangkat gateway. Field dipetakan dari Device; nilai Slackersender yang
+// tidak punya padanan langsung dikirim konstanta (reply_when="Personal").
+// Status koneksi dibaca dari kolom devices.status yang disinkronkan
+// Manager saat connect/disconnect.
+func wampInfoDevice(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			APIKey string `form:"api_key" json:"api_key"`
+			Number string `form:"number" json:"number"`
+		}
+		_ = c.ShouldBind(&req)
+		if req.APIKey == "" {
+			req.APIKey = c.GetHeader("X-API-Key")
+		}
+
+		if req.APIKey == "" || req.Number == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"status": false, "message": "api_key dan number wajib diisi"})
+			return
+		}
+
+		ak, ok := authenticateAPIKey(c, db, req.APIKey, "devices:read")
+		if !ok {
+			return
+		}
+
+		device, err := resolveWampSender(db, ak.UserID, req.Number)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"status": false, "message": err.Error()})
+			return
+		}
+
+		// message_sent: pesan keluar yang benar-benar terkirim (definisi
+		// sama dengan kuota — failed/pending tidak dihitung).
+		var messageSent int64
+		db.Model(&models.Message{}).
+			Where("device_id = ? AND direction = ? AND status IN ?", device.ID, "outgoing", []string{"sent", "delivered", "read"}).
+			Count(&messageSent)
+
+		connStatus := "Disconnect"
+		if device.Status == "connected" {
+			connStatus = "Connect"
+		}
+
+		var webhook interface{}
+		if device.WebhookURL != "" {
+			webhook = device.WebhookURL
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": true,
+			"info": []gin.H{{
+				"id":           device.ID,
+				"user_id":      device.UserID,
+				"body":         device.Phone,
+				"webhook":      webhook,
+				"status":       connStatus,
+				"created_at":   device.CreatedAt,
+				"updated_at":   device.UpdatedAt,
+				"message_sent": messageSent,
+				"reply_when":   "Personal",
+				"wh_read":      boolToInt(device.ReadReceipts),
+				"reject_call":  boolToInt(device.RejectCall),
+				"wh_typing":    boolToInt(device.TypingIndicator),
+			}},
+		})
+	}
+}
+
+// boolToInt meniru representasi flag 0/1 ala Slackersender.
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// wampCheckNumber — kontrak Slackersender /check-number: cek apakah
+// nomor terdaftar di WhatsApp, kembalikan exists + JID.
+func wampCheckNumber(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			APIKey string `form:"api_key" json:"api_key"`
+			Sender string `form:"sender" json:"sender"`
+			Number string `form:"number" json:"number"`
+		}
+		_ = c.ShouldBind(&req)
+		if req.APIKey == "" {
+			req.APIKey = c.GetHeader("X-API-Key")
+		}
+
+		if req.APIKey == "" || req.Number == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"status": false, "message": "api_key dan number wajib diisi"})
+			return
+		}
+
+		ak, ok := authenticateAPIKey(c, db, req.APIKey, "contacts")
+		if !ok {
+			return
+		}
+
+		device, err := resolveWampSender(db, ak.UserID, req.Sender)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"status": false, "message": err.Error()})
+			return
+		}
+
+		exists, jid, err := wm.CheckNumberJID(device.ID, req.Number)
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": false, "message": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": true,
+			"msg": gin.H{
+				"exists": exists,
+				"jid":    jid,
+			},
+		})
+	}
 }

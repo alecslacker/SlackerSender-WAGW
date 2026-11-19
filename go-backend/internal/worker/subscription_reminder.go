@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Aldi1963/wagataway/internal/config"
 	"github.com/Aldi1963/wagataway/internal/database/models"
 	"github.com/rs/zerolog/log"
 )
@@ -66,8 +67,8 @@ func buildReminderMessage(planName string, endDate time.Time, daysLeft int) stri
 		hari = fmt.Sprintf("%d hari lagi", daysLeft)
 	}
 	return fmt.Sprintf(
-		"Halo! Paket %s Anda berakhir pada %s (%s). Perpanjang di https://wa.clipku.com/billing agar layanan tidak terputus.",
-		planName, formatTanggalID(endDate), hari,
+		"Halo! Paket %s Anda berakhir pada %s (%s). Perpanjang di %s/billing agar layanan tidak terputus.",
+		planName, formatTanggalID(endDate), hari, config.PublicURL(),
 	)
 }
 

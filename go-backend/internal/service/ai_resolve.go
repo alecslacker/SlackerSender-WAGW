@@ -5,6 +5,7 @@ package service
 // pilihan user sendiri, bukan key global server.
 
 import (
+	"github.com/Aldi1963/wagataway/internal/config"
 	"github.com/Aldi1963/wagataway/internal/database/models"
 	"github.com/Aldi1963/wagataway/internal/security"
 	"gorm.io/gorm"
@@ -61,6 +62,9 @@ func IsValidProvider(p string) bool {
 
 // DefaultModelFor mengembalikan model bawaan suatu provider.
 func DefaultModelFor(p AIProvider) string {
+	if p == ProviderNineRouter {
+		return config.AIDefaultModel()
+	}
 	if d, ok := ProviderDefaults[p]; ok {
 		return d.Model
 	}

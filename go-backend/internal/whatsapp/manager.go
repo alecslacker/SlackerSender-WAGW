@@ -298,6 +298,39 @@ func (m *Manager) CheckNumberRegistered(deviceID uint, phone string) (bool, erro
 	return false, nil
 }
 
+// CheckNumberJID mengecek apakah nomor terdaftar di WhatsApp dan
+// mengembalikan JID-nya (format "nomor@s.whatsapp.net") — kontrak
+// endpoint compat /check-number. JID hasil query bisa berupa LID
+// (addressing_mode=lid); nomor HP asli ada di PhoneNumber, sama seperti
+// pola CheckNumbersRegistered di group_mgmt.go.
+func (m *Manager) CheckNumberJID(deviceID uint, phone string) (bool, string, error) {
+	cli, err := m.connectedClient(deviceID)
+	if err != nil {
+		return false, "", err
+	}
+
+	jid, err := parseJID(phone)
+	if err != nil {
+		return false, "", err
+	}
+
+	resp, err := cli.IsOnWhatsApp(context.Background(), []string{jid.User})
+	if err != nil {
+		return false, "", err
+	}
+
+	for _, r := range resp {
+		if r.IsIn {
+			out := r.JID
+			if !r.PhoneNumber.IsEmpty() && r.PhoneNumber.Server == types.DefaultUserServer {
+				out = r.PhoneNumber
+			}
+			return true, out.String(), nil
+		}
+	}
+	return false, "", nil
+}
+
 // GetGroups returns all groups the device is a member of
 func (m *Manager) GetGroups(deviceID uint) ([]*types.GroupInfo, error) {
 	m.mu.RLock()
@@ -557,7 +590,7 @@ func (m *Manager) startSession(sess *SessionState) {
 	}
 
 	// Set device name/browser info
-	store.DeviceProps.Os = proto.String("WaGataway")
+	store.DeviceProps.Os = proto.String("SlackerSender")
 	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_CHROME.Enum()
 
 	clientLog := waLog.Noop

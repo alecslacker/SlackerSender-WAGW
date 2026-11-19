@@ -1,10 +1,10 @@
 package whatsapp
 
-// Klien HTTP untuk backend AI (9router di https://ai.clipku.com).
+// Klien HTTP untuk backend AI (9router milik Duta Corpora).
 // Endpoint, API key, dan model dapat dikonfigurasi via settings:
-//   ai_chat_url  (default: https://ai.clipku.com/v1/chat/completions)
+//   ai_chat_url  (default: <AI_DEFAULT_BASE_URL>/chat/completions)
 //   ai_api_key   (Bearer token untuk backend AI)
-//   ai_model     (default: "default")
+//   ai_model     (default: AI_DEFAULT_MODEL)
 
 import (
 	"bytes"
@@ -16,12 +16,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Aldi1963/wagataway/internal/config"
 	"github.com/Aldi1963/wagataway/internal/database/models"
+	"github.com/Aldi1963/wagataway/internal/security"
 	"gorm.io/gorm"
 )
 
 const (
-	defaultAIChatURL = "https://ai.clipku.com/v1/chat/completions"
 	settingAIChatURL = "ai_chat_url"
 	settingAIAPIKey  = "ai_api_key"
 	settingAIModel   = "ai_model"
@@ -39,7 +40,7 @@ func aiChatURL(db *gorm.DB) string {
 	if v := aiSetting(db, settingAIChatURL); v != "" {
 		return v
 	}
-	return defaultAIChatURL
+	return config.AIDefaultBaseURL() + "/chat/completions"
 }
 
 // AskAI mengirim systemPrompt + userMessage ke backend AI dan mengembalikan
@@ -48,7 +49,7 @@ func aiChatURL(db *gorm.DB) string {
 func AskAI(db *gorm.DB, systemPrompt, userMessage string) (string, error) {
 	model := aiSetting(db, settingAIModel)
 	if model == "" {
-		model = "default"
+		model = config.AIDefaultModel()
 	}
 	payload := map[string]interface{}{
 		"model": model,
@@ -58,13 +59,19 @@ func AskAI(db *gorm.DB, systemPrompt, userMessage string) (string, error) {
 		},
 		"max_tokens":  500,
 		"temperature": 0.7,
+		// 9router membalas SSE bila stream tidak diisi; kita butuh satu JSON utuh.
+		"stream": false,
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return "", err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, aiChatURL(db), bytes.NewReader(body))
+	chatURL := aiChatURL(db)
+	if err := security.ValidateOutboundURL(chatURL); err != nil {
+		return "", fmt.Errorf("URL backend AI ditolak: %w", err)
+	}
+	req, err := http.NewRequest(http.MethodPost, chatURL, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
@@ -73,8 +80,7 @@ func AskAI(db *gorm.DB, systemPrompt, userMessage string) (string, error) {
 		req.Header.Set("Authorization", "Bearer "+key)
 	}
 
-	client := &http.Client{Timeout: 60 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := security.NewSafeClient(60 * time.Second).Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -112,16 +118,19 @@ func AskAI(db *gorm.DB, systemPrompt, userMessage string) (string, error) {
 // AICheckHealth memeriksa konektivitas ke backend AI via /api/health
 // pada host yang sama dengan ai_chat_url.
 func AICheckHealth(db *gorm.DB) (bool, string) {
-	healthURL := "https://ai.clipku.com/api/health"
-	if u, err := url.Parse(aiChatURL(db)); err == nil && u.Host != "" {
-		scheme := u.Scheme
-		if scheme == "" {
-			scheme = "https"
-		}
-		healthURL = scheme + "://" + u.Host + "/api/health"
+	u, err := url.Parse(aiChatURL(db))
+	if err != nil || u.Host == "" {
+		return false, "URL backend AI tidak valid"
 	}
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Get(healthURL)
+	scheme := u.Scheme
+	if scheme == "" {
+		scheme = "https"
+	}
+	healthURL := scheme + "://" + u.Host + "/api/health"
+	if err := security.ValidateOutboundURL(healthURL); err != nil {
+		return false, err.Error()
+	}
+	resp, err := security.NewSafeClient(15 * time.Second).Get(healthURL)
 	if err != nil {
 		return false, err.Error()
 	}

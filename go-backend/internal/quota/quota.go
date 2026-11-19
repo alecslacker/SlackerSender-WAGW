@@ -43,6 +43,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Aldi1963/wagataway/internal/config"
 	"github.com/Aldi1963/wagataway/internal/database/models"
 	"github.com/Aldi1963/wagataway/internal/subscription"
 	"gorm.io/gorm"
@@ -192,11 +193,11 @@ func ExceededMessage(r *Result) string {
 		return "Kuota pesan habis. Perpanjang/upgrade paket untuk menambah kuota."
 	}
 	if r.SubExpired {
-		return "Langganan berakhir. Perpanjang di https://wa.clipku.com/billing"
+		return "Langganan berakhir. Perpanjang di " + config.PublicURL() + "/billing"
 	}
 	if r.SubGraceBlocked {
-		return fmt.Sprintf("Masa tenggang langganan: batas %d pesan/hari tercapai (%d/%d hari ini). Perpanjang di https://wa.clipku.com/billing agar tidak terblokir.",
-			r.SubGraceLimit, r.SubGraceUsed, r.SubGraceLimit)
+		return fmt.Sprintf("Masa tenggang langganan: batas %d pesan/hari tercapai (%d/%d hari ini). Perpanjang di %s/billing agar tidak terblokir.",
+			r.SubGraceLimit, r.SubGraceUsed, r.SubGraceLimit, config.PublicURL())
 	}
 	return fmt.Sprintf("Kuota pesan paket %s habis (%d/%d). Perpanjang/upgrade paket untuk menambah kuota.",
 		r.PlanName, r.Used, r.Limit)

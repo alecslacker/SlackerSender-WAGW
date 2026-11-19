@@ -104,7 +104,7 @@ func clipkuWebhookURLFromSettings(db *gorm.DB, cfgWebhookURL string) string {
 	if cfgWebhookURL != "" {
 		return cfgWebhookURL
 	}
-	return "https://wa.clipku.com/api/billing/clipkupay/webhook"
+	return config.PublicURL() + "/api/billing/clipkupay/webhook"
 }
 
 // ── Admin endpoints ──────────────────────────────────────────────────────────
