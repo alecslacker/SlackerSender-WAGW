@@ -403,6 +403,13 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
   const { t, lang } = useLang();
   const dateLocale = lang === "id" ? "id-ID" : "en-US";
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  // Ref ke nilai terbaru agar handler SSE (closure lama) tahu apakah percakapan
+  // sudah ada di daftar dan bisa memuat ulang daftar untuk kontak baru.
+  const conversationsRef = useRef<Conversation[]>([]);
+  conversationsRef.current = conversations;
+  const reloadConversationsRef = useRef<() => void>(() => {});
+  const activeDeviceIdRef = useRef<number | null>(null);
+  activeDeviceIdRef.current = activeDeviceId;
   const [devices, setDevices] = useState<DeviceLite[]>([]);
   const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
   const deviceMenuRef = useRef<HTMLDivElement>(null);
@@ -545,6 +552,8 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
       .then((d) => setConversations(d.conversations || []))
       .catch(() => {});
   };
+
+  reloadConversationsRef.current = () => loadConversations(statusFilter, activeDeviceId);
 
   useEffect(() => {
     setActivePhone(null);
@@ -767,7 +776,19 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
         };
         es.addEventListener("chat:message", (e) => {
           const data = JSON.parse(e.data);
+          // Pesan dari device lain (akun yang sama) bukan milik daftar yang sedang dibuka.
+          if (data.deviceId && activeDeviceIdRef.current != null && data.deviceId !== activeDeviceIdRef.current) {
+            return;
+          }
           const isActiveConvo = data.phone === activePhone;
+          // Kontak baru (belum ada di daftar): muat ulang daftar dari server.
+          if (!conversationsRef.current.some((c) => c.phone === data.phone)) {
+            reloadConversationsRef.current();
+          }
+          // Percakapan yang sedang dibuka: tandai terbaca agar badge tidak menumpuk.
+          if (isActiveConvo && data.direction === "in") {
+            apiPatch(`/chat/conversations/${data.phone}/read`).catch(() => {});
+          }
           if (isActiveConvo) {
             const incoming = normalizeMsg(data);
             setMessages((prev) => {
@@ -799,6 +820,23 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
           );
           if (data.direction === "in") playNotificationSound();
           gotMessage = true;
+        });
+        // Media pesan masuk selesai diunduh server → isi URL pada bubble.
+        es.addEventListener("chat:media", (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (!data.mediaUrl) return;
+            setMessages((prev) =>
+              prev.map((m) =>
+                (data.waMessageId && m.waMessageId === data.waMessageId) ||
+                (data.id && m.id === data.id)
+                  ? { ...m, mediaUrl: data.mediaUrl }
+                  : m
+              )
+            );
+          } catch {
+            /* abaikan payload rusak */
+          }
         });
         // Online/mengetik lawan bicara
         es.addEventListener("chat:presence", (e) => {
@@ -2638,6 +2676,12 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
                                       <Download className="w-4 h-4" />
                                     </a>
                                   </div>
+                                )}
+                                {/* Media belum tersedia (masih diunduh / gagal): tampilkan label tipenya */}
+                                {!msg.mediaUrl && msg.type !== "text" && (
+                                  <p className="text-[13px] opacity-80 mb-0.5">
+                                    <MediaPreview type={msg.type} text="" t={t} />
+                                  </p>
                                 )}
                                 {/* Teks / caption */}
                                 {(!msg.mediaUrl || msg.type === "text" || msg.type === "image" || msg.type === "video" || msg.type === "sticker") &&

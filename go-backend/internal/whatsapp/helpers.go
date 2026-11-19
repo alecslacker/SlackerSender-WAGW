@@ -15,6 +15,7 @@ import (
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // UploadsDir adalah direktori penyimpanan file upload File Manager,
@@ -107,6 +108,33 @@ func extractMessageText(msg *events.Message) string {
 		}
 	}
 	return ""
+}
+
+// describeMessageShape mendaftar NAMA field protobuf yang terisi pada pesan
+// (tanpa isinya) — diagnostik untuk pesan masuk yang teksnya kosong, agar
+// terlihat jenis pesan apa yang belum dikenali ekstraktor.
+func describeMessageShape(m *waE2E.Message) string {
+	if m == nil {
+		return "nil"
+	}
+	names := messageFieldNames(m)
+	if len(names) == 0 {
+		return "kosong"
+	}
+	return strings.Join(names, ",")
+}
+
+// messageFieldNames mengembalikan nama field protobuf yang terisi pada pesan.
+func messageFieldNames(m *waE2E.Message) []string {
+	if m == nil {
+		return nil
+	}
+	var names []string
+	m.ProtoReflect().Range(func(fd protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+		names = append(names, string(fd.Name()))
+		return true
+	})
+	return names
 }
 
 // getMessageType determines the type of an incoming message

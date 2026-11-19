@@ -850,6 +850,11 @@ func (m *Manager) handleEvent(sess *SessionState, evt interface{}) {
 		})
 		log.Warn().Uint("deviceID", sess.DeviceID).Msg("Logged out from WhatsApp (session invalidated)")
 
+	case *events.UndecryptableMessage:
+		// Pesan yang gagal didekripsi (mis. "mismatching MAC in signal
+		// message") sebelumnya hilang tanpa jejak.
+		m.handleUndecryptable(sess, v)
+
 	case *events.HistorySync:
 		// Ignore history sync for now
 		log.Debug().Uint("deviceID", sess.DeviceID).Msg("History sync received")
@@ -888,6 +893,16 @@ func (m *Manager) handleIncomingMessage(sess *SessionState, msg *events.Message)
 
 	// Extract text content
 	text := extractMessageText(msg)
+
+	// Pesan teknis WhatsApp (kunci enkripsi grup, protokol internal) bukan isi
+	// percakapan: jangan disimpan ke Live Chat dan jangan memicu bot/AI/webhook.
+	// Sebelumnya ia tersimpan sebagai pesan teks kosong yang "tidak tampil".
+	if text == "" && isTechnicalMessage(msg.Message) {
+		log.Debug().Uint("deviceID", sess.DeviceID).
+			Str("bentuk", describeMessageShape(msg.Message)).
+			Msg("Pesan teknis diabaikan")
+		return
+	}
 	sender := msg.Info.Sender.User
 	// JID lengkap pengirim (bisa @lid atau @s.whatsapp.net) — disimpan agar
 	// balasan tidak perlu lookup PN→LID yang bisa gagal ("no LID found").
@@ -950,30 +965,68 @@ func (m *Manager) handleIncomingMessage(sess *SessionState, msg *events.Message)
 		Str("text", truncate(text, 50)).
 		Msg("Incoming message")
 
+	// Diagnostik: teks kosong → catat NAMA field protobuf (tanpa isi pesan)
+	// supaya jenis pesan yang belum dikenali ekstraktor bisa dilacak.
+	if text == "" {
+		log.Warn().
+			Uint("deviceID", sess.DeviceID).
+			Str("from", sender).
+			Str("tipe", getMessageType(msg)).
+			Str("bentuk", describeMessageShape(msg.Message)).
+			Str("bentukMentah", describeMessageShape(msg.RawMessage)).
+			Bool("ephemeral", msg.IsEphemeral).
+			Bool("viewOnce", msg.IsViewOnce).
+			Bool("edit", msg.IsEdit).
+			Msg("Pesan masuk tanpa teks")
+	}
+
+	// Teks TAMPILAN Live Chat. Media tanpa caption dibiarkan kosong (frontend
+	// menampilkan media/labelnya); pesan non-teks yang belum didukung (lokasi,
+	// kontak, polling, tombol...) diberi label supaya tidak tampil kosong.
+	// Alur bot/AI/webhook tetap memakai `text` asli.
+	_, hasMedia := incomingMediaOf(msg.Message)
+	displayText := text
+	if displayText == "" && !hasMedia {
+		displayText = unsupportedMessageLabel(msg.Message)
+	}
+
 	// Save to chat inbox
 	replyTo, replyContent := extractQuoteInfo(msg)
+	waMsgID := string(msg.Info.ID)
+	// Pesan yang sama bisa tiba lagi (retry dekripsi): buang salinan/placeholder
+	// lama agar tidak dobel di Live Chat.
+	if waMsgID != "" {
+		m.db.Where("user_id = ? AND device_id = ? AND wa_message_id = ? AND direction = ?",
+			sess.UserID, sess.DeviceID, waMsgID, "in").Delete(&models.ChatInbox{})
+	}
 	inbox := models.ChatInbox{
 		UserID:       sess.UserID,
 		DeviceID:     sess.DeviceID,
 		Phone:        senderPhone,
 		SenderJID:    senderJID,
 		Name:         msg.Info.PushName,
-		Content:      text,
+		Content:      displayText,
 		Type:         getMessageType(msg),
 		Direction:    "in",
 		IsRead:       false,
-		WaMessageID:  string(msg.Info.ID),
+		WaMessageID:  waMsgID,
 		ReplyTo:      replyTo,
 		ReplyContent: replyContent,
 	}
 	m.db.Create(&inbox)
+
+	// Siarkan ke Live Chat (SSE) + unduh media di latar belakang.
+	m.broadcastIncomingChat(sess, &inbox)
+	if hasMedia {
+		go m.fetchIncomingMedia(sess, msg, inbox.ID, senderPhone)
+	}
 
 	// Update or create conversation
 	// Drip berbasis aksi: kontak baru = belum ada percakapan sebelumnya.
 	var existingConv models.ChatConversation
 	isNewContact := m.db.Where("user_id = ? AND device_id = ? AND phone = ?",
 		sess.UserID, sess.DeviceID, senderPhone).First(&existingConv).Error != nil
-	m.updateConversation(sess, senderPhone, senderJID, msg.Info.PushName, text, getMessageType(msg))
+	m.updateConversation(sess, senderPhone, senderJID, msg.Info.PushName, displayText, getMessageType(msg))
 
 	// Drip berbasis aksi (non-blocking, gagal diam-diam): STOP/balasan,
 	// pesan pertama kontak baru, dan keyword.
