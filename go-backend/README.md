@@ -1,85 +1,90 @@
-# WaGataway — Go Backend
+# SlackerSender — Go Backend
 
-Migrasi backend WaGataway dari Node.js/Express ke **Go (Gin)** dengan WhatsApp integration via **whatsmeow**.
+Backend SlackerSender: REST API, WhatsApp via **whatsmeow**, dan dashboard React yang disajikan dari satu binary Go. Panduan penggunaan lengkap ada di [README utama](../README.md).
 
 ## Tech Stack
 
 | Komponen | Teknologi |
 |----------|-----------|
-| Language | Go 1.23+ |
+| Language | Go 1.26 (CGO wajib: `mattn/go-sqlite3`) |
 | HTTP Framework | Gin |
 | ORM | GORM |
-| Database | PostgreSQL |
-| Cache | Redis |
-| WhatsApp | whatsmeow (tulir) |
+| Database | PostgreSQL 16 + Row Level Security |
+| WhatsApp | whatsmeow |
 | Frontend | React + Vite + TailwindCSS v4 |
-| Queue/Workers | Native goroutines + robfig/cron |
-| Auth | JWT (golang-jwt) |
-| AI | OpenAI + Anthropic Go SDK |
-
-## UI Design
-
-**Monochrome — Vercel/Linear inspired:**
-- Solid black sidebar, white content area
-- No gradients, no glassmorphism
-- Inter + JetBrains Mono typography
-- Clean borders, generous whitespace
-- Light + Dark mode support
+| Workers | Goroutine + robfig/cron |
+| Auth | JWT + 2FA/TOTP + Google OAuth |
+| AI | Endpoint OpenAI-compatible |
 
 ## Quick Start
 
 ```bash
-# 1. Copy env
 cp .env.example .env
+# Isi DATABASE_URL dan JWT_SECRET (minimal 32 karakter, acak)
 
-# 2. Start infrastructure
-docker compose up -d postgres redis
+createdb wagataway
+psql "$DATABASE_URL" -f seed_plans.sql
 
-# 3. Run backend
-make dev
-
-# 4. Run frontend (separate terminal)
+CGO_ENABLED=1 go run ./cmd/server
+# frontend, terminal terpisah:
 cd web && pnpm install && pnpm dev
 ```
+
+Dashboard: `http://localhost:5173` · API: `http://localhost:8080/api`
+
+Alternatif Docker Compose (app + PostgreSQL 16 + Redis):
+
+```bash
+docker compose up --build -d
+```
+
+Perlu diingat: compose tidak mengisi `JWT_SECRET`/`APP_NAME`; ubah juga password PostgreSQL bawaan sebelum dipakai untuk hal selain pengembangan lokal.
 
 ## Build & Deploy
 
 ```bash
-# Build everything (Go binary + frontend)
-docker compose up --build
+make build                       # binary → ./bin/server
+cd web && pnpm build             # dashboard → ./web/dist
+CGO_ENABLED=1 go build -ldflags="-s -w" -o server ./cmd/server
+```
 
-# Or manual build
-make build          # Go binary → ./bin/server
-cd web && pnpm build  # Frontend → ./web/dist
+Server mendaftarkan SPA fallback hanya bila `web/dist/index.html` sudah ada saat startup. Di belakang reverse proxy, set `LISTEN_HOST=127.0.0.1` agar port aplikasi tidak terbuka publik.
+
+Admin pertama: `./server make-admin nama@domain.com`.
+
+## Pemeriksaan
+
+```bash
+go build ./...
+go vet ./...
+make check-hosts             # pagar host luar
+make check-hosts ARGS=--dist # termasuk hasil build frontend
 ```
 
 ## Project Structure
 
 ```
 go-backend/
-├── cmd/server/          # Entry point
+├── cmd/server/          # Entry point + subcommand make-admin
 ├── internal/
-│   ├── config/          # Environment config
-│   ├── database/        # DB connection + 34 models
-│   ├── handler/         # HTTP handlers (35+ route groups)
-│   ├── middleware/      # Auth, CORS, rate limit, maintenance
-│   ├── service/         # Business logic
-│   ├── whatsapp/        # WhatsApp session manager (whatsmeow)
-│   └── worker/          # Background scheduler (cron jobs)
-├── web/                 # React frontend
-├── Dockerfile           # Multi-stage build
-├── docker-compose.yml   # Full stack (app + postgres + redis)
-└── Makefile
+│   ├── config/          # Environment + ListenAddr()
+│   ├── database/        # Koneksi, migrasi, model
+│   ├── handler/         # HTTP handler (termasuk wamp_compat.go)
+│   ├── middleware/      # Auth, scope API key, CORS, rate limit, security headers
+│   ├── rls/             # Row Level Security via driver pgx
+│   ├── security/        # Enkripsi kredensial AI/webhook
+│   ├── whatsapp/        # Session manager + rotasi blast
+│   └── worker/          # Scheduler background
+├── scripts/             # Pemeriksa host luar + allowlist
+├── web/                 # React frontend + web/dist hasil build
+├── seed_plans.sql
+└── Dockerfile / docker-compose.yml / Makefile
 ```
 
-## Architecture
+## Arsitektur
 
-Single binary handles **everything**:
-- REST API (35+ route groups)
-- WhatsApp WebSocket connections (whatsmeow, no Node.js sidecar needed)
-- Background workers (scheduled messages, drip campaigns, bulk jobs)
-- Static file serving (React SPA)
+Satu binary menangani REST API, koneksi WhatsApp, worker background, dan static file dashboard. Endpoint kompatibel Slackersender (`/send-message`, `/send-media`, `/send-location`, `/info-device`, `/check-number`) berada di root, bukan di bawah `/api`.
 
-## Status
+---
 
-This is the initial scaffold/boilerplate. Features marked with stub handlers will be fully implemented incrementally.
+Copyright © 2026 Duta Corpora Indonesia — All rights reserved. Lisensi: [MIT](../LICENSE).
