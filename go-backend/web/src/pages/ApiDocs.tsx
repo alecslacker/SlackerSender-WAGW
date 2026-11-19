@@ -1324,9 +1324,14 @@ app.post("/hook/wa", express.raw({ type: "application/json" }), (req, res) => {
         </CardContent>
       </Card>
 
-      <p className="text-[11px] text-muted-foreground text-center pb-4 flex items-center justify-center gap-1">
-        <Check className="w-3 h-3" /> {t("apiDocs.baseUrlLabel")} <code className="font-mono">{baseUrl}/api</code>
-      </p>
+      <div className="text-[11px] text-muted-foreground text-center pb-4 space-y-1">
+        <p className="flex items-center justify-center gap-1 flex-wrap">
+          <Check className="w-3 h-3" /> {t("apiDocs.baseUrlLabel")} <code className="font-mono">{baseUrl}/api</code>
+        </p>
+        <p className="flex items-center justify-center gap-1 flex-wrap">
+          <Check className="w-3 h-3" /> {t("apiDocs.baseUrlCompatLabel")} <code className="font-mono">{baseUrl}</code>
+        </p>
+      </div>
     </div>
   );
 }

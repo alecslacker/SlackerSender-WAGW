@@ -241,3 +241,42 @@ func TestWampScopeEnforcedDB(t *testing.T) {
 		}
 	}
 }
+
+// Alias "/api/..." harus terdaftar sama persis dengan path root: klien yang
+// base URL-nya diisi "<domain>/api" sebelumnya kena 404 (log produksi).
+// db/wm nil aman — body kosong ditolak 400 sebelum menyentuh DB.
+func TestWampCompatRoutesRegisteredWithAPIAlias(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	registerWampCompatRoutes(r, nil, nil)
+
+	paths := []string{"/send-message", "/send-media", "/send-location", "/info-device", "/check-number"}
+	for _, prefix := range []string{"", "/api"} {
+		for _, p := range paths {
+			for _, method := range []string{http.MethodPost, http.MethodGet} {
+				w := httptest.NewRecorder()
+				req := httptest.NewRequest(method, prefix+p, strings.NewReader(`{}`))
+				req.Header.Set("Content-Type", "application/json")
+				r.ServeHTTP(w, req)
+				if w.Code != http.StatusBadRequest {
+					t.Errorf("%s %s%s: status %d (%s), mau 400 (route terdaftar, validasi menolak)", method, prefix, p, w.Code, w.Body.String())
+				}
+			}
+		}
+	}
+}
+
+func TestNormalizeWampPhone(t *testing.T) {
+	cases := map[string]string{
+		"089520001337":  "6289520001337",
+		"6289520001337": "6289520001337",
+		"89520001337":   "89520001337",
+		"0":             "0",
+		"":              "",
+	}
+	for in, want := range cases {
+		if got := normalizeWampPhone(in); got != want {
+			t.Errorf("normalizeWampPhone(%q) = %q, mau %q", in, got, want)
+		}
+	}
+}

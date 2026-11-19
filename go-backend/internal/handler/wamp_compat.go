@@ -36,16 +36,21 @@ import (
 func registerWampCompatRoutes(r *gin.Engine, db *gorm.DB, wm *whatsapp.Manager) {
 	// POST direkomendasikan (api_key tidak nongol di access log);
 	// GET didaftarkan demi kesamaan kontrak Slackersender.
-	r.POST("/send-message", wampSend(db, wm, false))
-	r.GET("/send-message", wampSend(db, wm, false))
-	r.POST("/send-media", wampSend(db, wm, true))
-	r.GET("/send-media", wampSend(db, wm, true))
-	r.POST("/send-location", wampSendLocation(db, wm))
-	r.GET("/send-location", wampSendLocation(db, wm))
-	r.POST("/info-device", wampInfoDevice(db))
-	r.GET("/info-device", wampInfoDevice(db))
-	r.POST("/check-number", wampCheckNumber(db, wm))
-	r.GET("/check-number", wampCheckNumber(db, wm))
+	// Alias "/api/..." menampung klien yang base URL-nya terlanjur diisi
+	// "<domain>/api" (kesalahan umum — terlihat di log produksi sebagai 404).
+	// Handler sama; auth tetap lewat api_key.
+	for _, prefix := range []string{"", "/api"} {
+		r.POST(prefix+"/send-message", wampSend(db, wm, false))
+		r.GET(prefix+"/send-message", wampSend(db, wm, false))
+		r.POST(prefix+"/send-media", wampSend(db, wm, true))
+		r.GET(prefix+"/send-media", wampSend(db, wm, true))
+		r.POST(prefix+"/send-location", wampSendLocation(db, wm))
+		r.GET(prefix+"/send-location", wampSendLocation(db, wm))
+		r.POST(prefix+"/info-device", wampInfoDevice(db))
+		r.GET(prefix+"/info-device", wampInfoDevice(db))
+		r.POST(prefix+"/check-number", wampCheckNumber(db, wm))
+		r.GET(prefix+"/check-number", wampCheckNumber(db, wm))
+	}
 }
 
 func wampSend(db *gorm.DB, wm *whatsapp.Manager, isMedia bool) gin.HandlerFunc {
@@ -188,6 +193,7 @@ func resolveWampSender(db *gorm.DB, userID uint, sender string) (*models.Device,
 		return -1
 	}, s)
 	if digits != "" {
+		digits = normalizeWampPhone(digits)
 		q := db.Where("user_id = ?", userID).Where("phone = ? OR phone = ?", digits, strings.TrimPrefix(digits, "62")).First(&device)
 		if q.Error == nil {
 			return &device, nil
@@ -205,6 +211,16 @@ func resolveWampSender(db *gorm.DB, userID uint, sender string) (*models.Device,
 	}
 
 	return nil, fmt.Errorf("perangkat pengirim tidak ditemukan")
+}
+
+// normalizeWampPhone mengubah format lokal "08xx" menjadi "628xx" (hanya
+// digit masuk). Tanpa ini sender/number berawalan 0 tidak cocok dengan
+// devices.phone yang tersimpan berformat 62xx.
+func normalizeWampPhone(digits string) string {
+	if strings.HasPrefix(digits, "0") && len(digits) > 1 {
+		return "62" + digits[1:]
+	}
+	return digits
 }
 
 // authenticateAPIKey memvalidasi api_key (hash) milik endpoint compat,

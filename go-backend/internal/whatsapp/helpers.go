@@ -43,11 +43,19 @@ func parseJID(phone string) (types.JID, error) {
 	}
 
 	phone = strings.TrimPrefix(phone, "+")
-	phone = strings.TrimPrefix(phone, "0")
 	phone = strings.ReplaceAll(phone, " ", "")
 	phone = strings.ReplaceAll(phone, "-", "")
 
 	if phone == "" {
+		return types.JID{}, fmt.Errorf("nomor telepon kosong")
+	}
+
+	// Format lokal Indonesia "08xx" → "628xx". Sebelumnya angka 0 hanya dibuang
+	// ("8xx@s.whatsapp.net" bukan nomor WA valid → "no LID found").
+	if strings.HasPrefix(phone, "0") {
+		phone = "62" + phone[1:]
+	}
+	if phone == "62" {
 		return types.JID{}, fmt.Errorf("nomor telepon kosong")
 	}
 

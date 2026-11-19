@@ -821,6 +821,7 @@ export default {
     err429: "Too many requests — wait a moment and try again. If the body contains code QUOTA_EXCEEDED, the plan's monthly message quota is used up: renew/upgrade the plan to add quota. If the body contains code SUBSCRIPTION_GRACE_LIMIT, the 20 messages/day grace limit is reached: renew the plan to avoid being blocked.",
     err500: "Server error — contact support if it persists.",
     baseUrlLabel: "API base URL:",
+    baseUrlCompatLabel: "Slackersender Compatible (no /api):",
     loginBtn: "Log in",
     registerBtn: "Sign up",
     msgGroupTitle: "Messages",

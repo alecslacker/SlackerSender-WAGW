@@ -835,6 +835,7 @@ const id = {
     err429: "Terlalu banyak permintaan — tunggu sebentar lalu coba lagi. Bila body memuat code QUOTA_EXCEEDED, artinya kuota pesan bulanan paket habis: perpanjang/upgrade paket untuk menambah kuota. Bila body memuat code SUBSCRIPTION_GRACE_LIMIT, artinya batas 20 pesan/hari masa tenggang tercapai: perpanjang paket agar tidak terblokir.",
     err500: "Kesalahan server — hubungi dukungan bila berulang.",
     baseUrlLabel: "Base URL API:",
+    baseUrlCompatLabel: "Slackersender Compatible (tanpa /api):",
     loginBtn: "Masuk",
     registerBtn: "Daftar",
     msgGroupTitle: "Pesan",
