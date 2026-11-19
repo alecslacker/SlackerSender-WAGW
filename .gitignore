@@ -38,6 +38,15 @@ Thumbs.db
 *.so
 *.dylib
 
+# Artefak tooling lokal (browser uji, plugin editor), bukan bagian proyek
+/.playwright-mcp/
+/.v2c/
+/.zcode/
+/go-backend/web/.v2c/
+
 # Local deploy only (secrets + nginx-served build copy)
 /go-backend/docker-compose.override.yml
 /go-backend/web-dist-static/
+
+# Sumber logo Slackercode (salinan final sudah ada di go-backend/web/public)
+/.trae/documents/*.png
