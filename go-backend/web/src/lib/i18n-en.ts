@@ -1035,6 +1035,8 @@ export default {
     paramCompatApiKey: "API key from Settings → API Key (in the body, not a header)",
     paramCompatSender: "Sender device number / ID / name. Empty = default device",
     paramCompatNumber: "Recipient number, format 62xxx without +",
+    paramCompatNumberMulti: "Recipient number, format 62xxx without +. For multiple numbers separate them with |, e.g. 6281111|6282222 (the same message is sent to all; duplicate numbers are sent once)",
+    compatMultiNote: "Multiple numbers: put several numbers in number separated by | (comma, semicolon and newline are also accepted). Each number is recorded as its own message and sent in sequence with a random 2–5 second gap. Quota is checked for the total up front; if it is not enough the whole request is rejected (429). The maximum numbers per request follows the active plan's bulk limit. A multi-number response adds \"ids\" (list of message IDs) and \"total\".",
     paramCompatMessage: "Message text (max 10,000 characters)",
     paramCompatMediaType: "image | video | audio | document (empty / unknown = image)",
     paramCompatUrl: "Direct link to the file — not a Google Drive share link",

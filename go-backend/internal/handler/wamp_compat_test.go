@@ -5,12 +5,15 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/whatsapp"
 	"github.com/gin-gonic/gin"
 )
 
@@ -64,12 +67,46 @@ func TestAPIKeyHasScope(t *testing.T) {
 	}
 }
 
+// ── Pure function: splitWampNumbers (banyak nomor dipisah "|") ───────────────
+
+func TestSplitWampNumbers(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want []string
+	}{
+		{"satu nomor", "628111", []string{"628111"}},
+		{"pemisah pipe", "628111|628222|628333", []string{"628111", "628222", "628333"}},
+		{"spasi di-trim", " 628111 | 628222 ", []string{"628111", "628222"}},
+		{"entri kosong dibuang", "628111||628222|", []string{"628111", "628222"}},
+		{"duplikat dibuang, urutan asli", "628222|628111|628222", []string{"628222", "628111"}},
+		{"pemisah lain ditoleransi", "628111,628222;628333\n628444", []string{"628111", "628222", "628333", "628444"}},
+		{"hanya pemisah", "| |", []string{}},
+		{"kosong", "", []string{}},
+		{"format 08xx dipertahankan apa adanya", "0811|62822", []string{"0811", "62822"}},
+	}
+	for _, tc := range cases {
+		got := splitWampNumbers(tc.in)
+		if len(got) != len(tc.want) {
+			t.Errorf("%s: splitWampNumbers(%q) = %v, mau %v", tc.name, tc.in, got, tc.want)
+			continue
+		}
+		for i := range got {
+			if got[i] != tc.want[i] {
+				t.Errorf("%s: splitWampNumbers(%q) = %v, mau %v", tc.name, tc.in, got, tc.want)
+				break
+			}
+		}
+	}
+}
+
 // ── Handler tanpa DB: validasi input ditolak sebelum auth ───────────────────
 
 func newWampTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	// db nil aman: semua kasus di bawah ditolak sebelum menyentuh DB.
+	r.POST("/send-message", wampSend(nil, nil, false))
 	r.POST("/send-location", wampSendLocation(nil, nil))
 	r.POST("/check-number", wampCheckNumber(nil, nil))
 	return r
@@ -104,6 +141,17 @@ func TestWampSendLocationValidation(t *testing.T) {
 		}
 		if !strings.Contains(w.Body.String(), `"status":false`) {
 			t.Errorf("%s: respons harus mengandung status:false, dapat %s", tc.name, w.Body.String())
+		}
+	}
+}
+
+// number yang hanya berisi pemisah dianggap kosong → 400 sebelum menyentuh DB.
+func TestWampSendMessageEmptyNumbers(t *testing.T) {
+	r := newWampTestRouter()
+	for _, number := range []string{"", "|", " | | "} {
+		w := postJSON(r, "/send-message", `{"api_key":"kunci","number":"`+number+`","message":"hai"}`)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("number %q: status %d (%s), mau 400", number, w.Code, w.Body.String())
 		}
 	}
 }
@@ -201,6 +249,116 @@ func TestWampInfoDeviceShape(t *testing.T) {
 	if w.Code != http.StatusNotFound {
 		t.Errorf("device tak dikenal: status %d (%s), mau 404", w.Code, w.Body.String())
 	}
+}
+
+// End-to-end banyak nomor: device sengaja TIDAK terhubung sehingga setiap
+// pengiriman gagal terkontrol (tanpa menyentuh WhatsApp sungguhan). Yang
+// diverifikasi: satu catatan pesan per nomor unik, ids/total di respons, dan
+// respons satu nomor tetap tanpa ids.
+func TestWampSendMultiNumbersDB(t *testing.T) {
+	db := auditTestDB(t)
+	if err := db.AutoMigrate(&models.User{}, &models.ApiKey{}, &models.Device{}, &models.Message{}, &models.MessageReport{}); err != nil {
+		t.Fatalf("AutoMigrate: %v", err)
+	}
+
+	cleanup := func() {
+		var u models.User
+		if err := db.Unscoped().Where("email = ?", "wamp-multi@example.test").First(&u).Error; err == nil {
+			db.Unscoped().Where("user_id = ?", u.ID).Delete(&models.MessageReport{})
+			db.Unscoped().Where("user_id = ?", u.ID).Delete(&models.Message{})
+		}
+		db.Unscoped().Where("name LIKE ?", "wamp-multi-%").Delete(&models.ApiKey{})
+		db.Unscoped().Where("name LIKE ?", "wamp-multi-%").Delete(&models.Device{})
+		db.Unscoped().Where("email = ?", "wamp-multi@example.test").Delete(&models.User{})
+	}
+	cleanup()
+	defer cleanup()
+
+	u := models.User{Name: "wamp-multi-user", Email: "wamp-multi@example.test"}
+	if err := db.Create(&u).Error; err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	rawKey := "wamp-multi-key-1"
+	ak := models.ApiKey{UserID: u.ID, Name: "wamp-multi-key", KeyHash: models.HashAPIKey(rawKey), IsActive: true}
+	if err := db.Create(&ak).Error; err != nil {
+		t.Fatalf("seed api key: %v", err)
+	}
+	dev := models.Device{UserID: u.ID, Name: "wamp-multi-dev", Phone: "628123450000", Status: "disconnected"}
+	if err := db.Create(&dev).Error; err != nil {
+		t.Fatalf("seed device: %v", err)
+	}
+
+	wm := whatsapp.NewManager(t.TempDir(), db)
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.POST("/send-message", wampSend(db, wm, false))
+
+	// Banyak nomor: 3 entri, 1 duplikat, 1 kosong → 2 nomor unik.
+	w := postJSON(r, "/send-message", `{"api_key":"`+rawKey+`","sender":"628123450000","number":"628111000001| 628111000002 ||628111000001","message":"Halo"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("multi nomor: status %d (%s), mau 200", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Status bool   `json:"status"`
+		ID     uint   `json:"id"`
+		IDs    []uint `json:"ids"`
+		Total  int    `json:"total"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("respons bukan JSON: %v (%s)", err, w.Body.String())
+	}
+	if !resp.Status || resp.Total != 2 || len(resp.IDs) != 2 || resp.ID != resp.IDs[0] {
+		t.Fatalf("respons multi nomor tidak sesuai: %s", w.Body.String())
+	}
+	var msgs []models.Message
+	db.Where("user_id = ?", u.ID).Order("id").Find(&msgs)
+	if len(msgs) != 2 || msgs[0].To != "628111000001" || msgs[1].To != "628111000002" {
+		t.Fatalf("catatan pesan tidak sesuai: %+v", msgs)
+	}
+	for _, m := range msgs {
+		if m.Content != "Halo" || m.Via != "api" {
+			t.Errorf("pesan %d: content/via salah: %q / %q", m.ID, m.Content, m.Via)
+		}
+	}
+
+	// Pengiriman background: jeda acak 2-5 dtk antar nomor; tunggu keduanya "failed".
+	deadline := time.Now().Add(20 * time.Second)
+	for {
+		var failed int64
+		db.Model(&models.Message{}).Where("user_id = ? AND status = ?", u.ID, "failed").Count(&failed)
+		if failed == 2 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("kedua pesan tidak berstatus failed dalam 20 dtk (baru %d)", failed)
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+	var reports int64
+	db.Model(&models.MessageReport{}).Where("user_id = ?", u.ID).Count(&reports)
+	if reports != 2 {
+		t.Errorf("laporan per nomor = %d, mau 2", reports)
+	}
+
+	// Satu nomor: respons tetap seperti kontrak lama (tanpa ids/total).
+	w = postJSON(r, "/send-message", `{"api_key":"`+rawKey+`","sender":"628123450000","number":"628111000009","message":"Halo"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("satu nomor: status %d (%s), mau 200", w.Code, w.Body.String())
+	}
+	if strings.Contains(w.Body.String(), `"ids"`) || strings.Contains(w.Body.String(), `"total"`) {
+		t.Errorf("respons satu nomor tidak boleh berisi ids/total: %s", w.Body.String())
+	}
+
+	// Tunggu goroutine pengiriman terakhir selesai sebelum cleanup, supaya
+	// tidak menulis laporan setelah data test dihapus.
+	for deadline := time.Now().Add(10 * time.Second); time.Now().Before(deadline); time.Sleep(200 * time.Millisecond) {
+		var failed int64
+		db.Model(&models.Message{}).Where("user_id = ? AND status = ?", u.ID, "failed").Count(&failed)
+		if failed == 3 {
+			break
+		}
+	}
+	time.Sleep(300 * time.Millisecond) // recordReport berjalan tepat setelah status diperbarui
 }
 
 // Regression end-to-end: key read-only ditolak 403 di endpoint compat.

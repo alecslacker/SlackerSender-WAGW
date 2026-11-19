@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"net/http"
 	"strconv"
 	"strings"
@@ -71,7 +72,8 @@ func wampSend(db *gorm.DB, wm *whatsapp.Manager, isMedia bool) gin.HandlerFunc {
 			req.APIKey = c.GetHeader("X-API-Key")
 		}
 
-		if req.APIKey == "" || req.Number == "" {
+		numbers := splitWampNumbers(req.Number)
+		if req.APIKey == "" || len(numbers) == 0 {
 			c.JSON(http.StatusBadRequest, gin.H{"status": false, "message": "api_key dan number wajib diisi"})
 			return
 		}
@@ -116,52 +118,145 @@ func wampSend(db *gorm.DB, wm *whatsapp.Manager, isMedia bool) gin.HandlerFunc {
 			return
 		}
 
-		// Kuota pesan bulanan (Fitur 3): tolak 429 bila habis.
-		if qr, qerr := quota.Check(db, ak.UserID); qerr == nil && !qr.Allowed {
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"status":  false,
-				"message": quota.ExceededMessage(qr),
-				"code":    "QUOTA_EXCEEDED",
-			})
-			return
-		}
-
-		msg := models.Message{
-			UserID:   ak.UserID,
-			DeviceID: device.ID,
-			To:       req.Number,
+		wampDispatch(c, db, wm, ak.UserID, device, numbers, wampPayload{
 			Type:     msgType,
 			Content:  content,
 			MediaURL: mediaURL,
 			Caption:  req.Caption,
+			ReplyTo:  req.ReplyTo,
+		})
+	}
+}
+
+// ── Banyak nomor dalam satu request ──────────────────────────────────────────
+// Kontrak Slackersender: field "number" boleh berisi beberapa nomor yang
+// dipisah "|" (mis. "6281111|6282222"); pesan yang sama dikirim ke semuanya.
+// Pemisah lain (",", ";", baris baru) ikut ditoleransi.
+
+// wampMultiSendGap = jeda acak antar nomor pada request multi-nomor agar pola
+// kirim tidak seperti spam (sama semangatnya dengan jeda blast bulk).
+const (
+	wampMultiMinGapSec = 2
+	wampMultiMaxGapSec = 5
+)
+
+// splitWampNumbers memecah field number menjadi daftar nomor unik (urutan
+// asli dipertahankan); spasi dan entri kosong dibuang.
+func splitWampNumbers(raw string) []string {
+	parts := strings.FieldsFunc(raw, func(r rune) bool {
+		return strings.ContainsRune("|,;\n\r", r)
+	})
+	seen := make(map[string]bool, len(parts))
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" || seen[p] {
+			continue
+		}
+		seen[p] = true
+		out = append(out, p)
+	}
+	return out
+}
+
+// wampPayload = isi pesan yang sama untuk semua nomor tujuan.
+type wampPayload struct {
+	Type      string
+	Content   string
+	MediaURL  string
+	Caption   string
+	ReplyTo   string
+	Latitude  float64
+	Longitude float64
+}
+
+// wampDispatch menyimpan satu catatan pesan per nomor, mengecek kuota untuk
+// TOTAL nomor di muka, lalu mengirim berurutan di background (jeda acak antar
+// nomor bila lebih dari satu). Menulis respons ke c.
+func wampDispatch(c *gin.Context, db *gorm.DB, wm *whatsapp.Manager, userID uint, device *models.Device, numbers []string, p wampPayload) {
+	// Batas penerima per request mengikuti batas bulk paket aktif.
+	limit := 1000
+	if plan, _, err := quota.EffectivePlan(db, userID); err == nil && plan != nil && plan.MaxBulk > 0 {
+		limit = plan.MaxBulk
+	}
+	if len(numbers) > limit {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  false,
+			"message": fmt.Sprintf("Maksimal %d nomor per request (paket aktif)", limit),
+		})
+		return
+	}
+
+	// Kuota pesan bulanan (Fitur 3): tolak 429 bila habis.
+	if qr, qerr := quota.CheckN(db, userID, int64(len(numbers))); qerr == nil && !qr.Allowed {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"status":  false,
+			"message": quota.ExceededMessage(qr),
+			"code":    "QUOTA_EXCEEDED",
+		})
+		return
+	}
+
+	msgs := make([]models.Message, 0, len(numbers))
+	for _, num := range numbers {
+		msg := models.Message{
+			UserID:   userID,
+			DeviceID: device.ID,
+			To:       num,
+			Type:     p.Type,
+			Content:  p.Content,
+			MediaURL: p.MediaURL,
+			Caption:  p.Caption,
 			Status:   "pending",
 			Via:      "api",
 		}
 		if err := db.Create(&msg).Error; err != nil {
+			// Batalkan yang sudah terlanjur dibuat agar tidak menggantung "pending".
+			for i := range msgs {
+				db.Model(&msgs[i]).Updates(map[string]interface{}{"status": "failed", "error_msg": "dibatalkan: gagal menyimpan pesan lain dalam request"})
+			}
 			c.JSON(http.StatusInternalServerError, gin.H{"status": false, "message": "Gagal menyimpan pesan"})
 			return
 		}
+		msgs = append(msgs, msg)
+	}
 
-		campaignID := "wamp-" + time.Now().Format("20060102150405")
-		go func() {
-			waID, err := wm.SendMessageWithOptions(device.ID, req.Number, whatsapp.SendOptions{
-				Type:     msgType,
-				Content:  content,
-				MediaURL: mediaURL,
-				ReplyTo:  req.ReplyTo,
+	campaignID := "wamp-" + time.Now().Format("20060102150405")
+	go func() {
+		for i := range msgs {
+			if i > 0 {
+				time.Sleep(time.Duration(wampMultiMinGapSec+rand.IntN(wampMultiMaxGapSec-wampMultiMinGapSec+1)) * time.Second)
+			}
+			msg := &msgs[i]
+			waID, err := wm.SendMessageWithOptions(device.ID, msg.To, whatsapp.SendOptions{
+				Type:      p.Type,
+				Content:   p.Content,
+				MediaURL:  p.MediaURL,
+				ReplyTo:   p.ReplyTo,
+				Latitude:  p.Latitude,
+				Longitude: p.Longitude,
 			})
 			if err != nil {
-				db.Model(&msg).Updates(map[string]interface{}{"status": "failed", "error_msg": err.Error()})
-				recordReport(db, ak.UserID, device.ID, campaignID, req.Number, "", "failed", err.Error())
+				db.Model(msg).Updates(map[string]interface{}{"status": "failed", "error_msg": err.Error()})
+				recordReport(db, userID, device.ID, campaignID, msg.To, "", "failed", err.Error())
 			} else {
 				now := time.Now()
-				db.Model(&msg).Updates(map[string]interface{}{"status": "sent", "message_id": waID, "sent_at": &now})
-				recordReport(db, ak.UserID, device.ID, campaignID, req.Number, waID, "sent", "")
+				db.Model(msg).Updates(map[string]interface{}{"status": "sent", "message_id": waID, "sent_at": &now})
+				recordReport(db, userID, device.ID, campaignID, msg.To, waID, "sent", "")
 			}
-		}()
+		}
+	}()
 
-		c.JSON(http.StatusOK, gin.H{"status": true, "message": "Pesan sedang dikirim", "id": msg.ID})
+	resp := gin.H{"status": true, "message": "Pesan sedang dikirim", "id": msgs[0].ID}
+	if len(msgs) > 1 {
+		ids := make([]uint, len(msgs))
+		for i := range msgs {
+			ids[i] = msgs[i].ID
+		}
+		resp["ids"] = ids
+		resp["total"] = len(msgs)
 	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // resolveWampSender mencari device milik user berdasarkan sender yang dikirim
@@ -300,7 +395,8 @@ func wampSendLocation(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 			req.APIKey = c.GetHeader("X-API-Key")
 		}
 
-		if req.APIKey == "" || req.Number == "" {
+		numbers := splitWampNumbers(req.Number)
+		if req.APIKey == "" || len(numbers) == 0 {
 			c.JSON(http.StatusBadRequest, gin.H{"status": false, "message": "api_key dan number wajib diisi"})
 			return
 		}
@@ -330,49 +426,13 @@ func wampSendLocation(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 			return
 		}
 
-		// Lokasi juga pesan keluar → ikut aturan kuota (lihat paket quota).
-		if qr, qerr := quota.Check(db, ak.UserID); qerr == nil && !qr.Allowed {
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"status":  false,
-				"message": quota.ExceededMessage(qr),
-				"code":    "QUOTA_EXCEEDED",
-			})
-			return
-		}
-
-		content := fmt.Sprintf("%f,%f", lat, lon)
-		msg := models.Message{
-			UserID:   ak.UserID,
-			DeviceID: device.ID,
-			To:       req.Number,
-			Type:     "location",
-			Content:  content,
-			Status:   "pending",
-			Via:      "api",
-		}
-		if err := db.Create(&msg).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"status": false, "message": "Gagal menyimpan pesan"})
-			return
-		}
-
-		campaignID := "wamp-" + time.Now().Format("20060102150405")
-		go func() {
-			waID, err := wm.SendMessageWithOptions(device.ID, req.Number, whatsapp.SendOptions{
-				Type:      "location",
-				Latitude:  lat,
-				Longitude: lon,
-			})
-			if err != nil {
-				db.Model(&msg).Updates(map[string]interface{}{"status": "failed", "error_msg": err.Error()})
-				recordReport(db, ak.UserID, device.ID, campaignID, req.Number, "", "failed", err.Error())
-			} else {
-				now := time.Now()
-				db.Model(&msg).Updates(map[string]interface{}{"status": "sent", "message_id": waID, "sent_at": &now})
-				recordReport(db, ak.UserID, device.ID, campaignID, req.Number, waID, "sent", "")
-			}
-		}()
-
-		c.JSON(http.StatusOK, gin.H{"status": true, "message": "Pesan sedang dikirim", "id": msg.ID})
+		// Lokasi juga pesan keluar → ikut aturan kuota (dicek di wampDispatch).
+		wampDispatch(c, db, wm, ak.UserID, device, numbers, wampPayload{
+			Type:      "location",
+			Content:   fmt.Sprintf("%f,%f", lat, lon),
+			Latitude:  lat,
+			Longitude: lon,
+		})
 	}
 }
 

@@ -209,6 +209,8 @@ Api key dikirim di body (`api_key`) atau header `X-API-Key`. Mendukung JSON dan 
 | POST/GET | `/info-device` | `devices:read` | `api_key`, `number` (nomor/ID/nama device) |
 | POST/GET | `/check-number` | `contacts` | `api_key`, `number`, `sender?` |
 
+**Banyak nomor sekaligus** (`/send-message`, `/send-media`, `/send-location`): isi `number` dengan beberapa nomor dipisah `|`, contoh `"number": "6281111|6282222|6283333"`. Pesan yang sama dikirim ke semuanya. Pemisah `,`, `;`, dan baris baru juga diterima; spasi dan entri kosong dibuang, nomor ganda hanya dikirim sekali. Tiap nomor dicatat sebagai pesan sendiri dan dikirim berurutan dengan jeda acak 2–5 detik. Kuota dicek untuk total nomor di awal (kurang = seluruh request ditolak 429), dan jumlah nomor per request dibatasi batas bulk paket aktif (bawaan 1000). Satu nomor membalas `{"status": true, "message": ..., "id": <id>}` seperti biasa; banyak nomor menambah `"ids": [...]` dan `"total"`.
+
 `sender` boleh ID device, nomor HP, atau nama device; kosong = device default. `media_type`: `image` (default), `video`, `audio`, `document`. Respons mengantre pesan (`status: true` berarti diterima untuk dikirim, bukan sudah terkirim ke WhatsApp). Contoh lengkap ada di halaman **API Docs** di dashboard.
 
 ### Publik
