@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/Aldi1963/wagataway/internal/config"
 	"github.com/Aldi1963/wagataway/internal/database/models"
 	"github.com/Aldi1963/wagataway/internal/quota"
 	"github.com/Aldi1963/wagataway/internal/rls"
@@ -146,7 +147,69 @@ func AutoMigrate(db *gorm.DB) error {
 	if err := migrateAPIKeyHashes(db); err != nil {
 		return err
 	}
-	return migrateMessageTemplateGrandfather(db)
+	if err := migrateMessageTemplateGrandfather(db); err != nil {
+		return err
+	}
+	return migrateLegacyAIHost(db)
+}
+
+// legacyAIHost adalah host backend AI lama (pihak lain) yang digantikan 9router
+// milik Duta Corpora.
+const legacyAIHost = "ai.clipku.com"
+
+// migrateLegacyAIHost memindahkan data lama yang masih menunjuk ke
+// ai.clipku.com. Sekali jalan (flag di tabel settings), idempoten:
+//   - ai_connections provider 9router: base_url dikosongkan → mengikuti
+//     AI_DEFAULT_BASE_URL; model "default" (tidak ada di 9router baru) →
+//     AI_DEFAULT_MODEL.
+//   - ai_connections provider lain yang base_url-nya ai.clipku.com → base URL bawaan.
+//   - setting ai_chat_url yang menunjuk host lama dihapus → memakai default config.
+//
+// API key TIDAK disentuh: key lama tidak berlaku di server baru, pemilik
+// harus mengisi key baru lewat UI Koneksi AI. Berjalan tanpa konteks user
+// (bypass RLS), sama seperti migrasi lain di boot.
+func migrateLegacyAIHost(db *gorm.DB) error {
+	const flagKey = "ai_legacy_host_migrated_v1"
+	var flag models.Setting
+	if err := db.Where("key = ?", flagKey).First(&flag).Error; err == nil {
+		return nil
+	}
+	like := "%" + legacyAIHost + "%"
+
+	res := db.Unscoped().Model(&models.AIConnection{}).
+		Where("provider = ? AND base_url ILIKE ?", "9router", like).
+		Update("base_url", "")
+	if res.Error != nil {
+		return res.Error
+	}
+	conns := res.RowsAffected
+
+	res = db.Unscoped().Model(&models.AIConnection{}).
+		Where("provider = ? AND model = ?", "9router", "default").
+		Update("model", config.AIDefaultModel())
+	if res.Error != nil {
+		return res.Error
+	}
+	conns += res.RowsAffected
+
+	res = db.Unscoped().Model(&models.AIConnection{}).
+		Where("provider <> ? AND base_url ILIKE ?", "9router", like).
+		Update("base_url", config.AIDefaultBaseURL())
+	if res.Error != nil {
+		return res.Error
+	}
+	conns += res.RowsAffected
+
+	res = db.Where("key = ? AND value ILIKE ?", "ai_chat_url", like).Delete(&models.Setting{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if conns+res.RowsAffected > 0 {
+		log.Info().Int64("connections", conns).Int64("settings", res.RowsAffected).
+			Msg("Migrated legacy AI host (" + legacyAIHost + ") to default backend")
+	}
+	return db.Where("key = ?", flagKey).Assign(models.Setting{Key: flagKey, Value: "1"}).
+		FirstOrCreate(&models.Setting{}).Error
 }
 
 // migrateMessageIdempotencyUniqueIndex membuat unique index parsial untuk
