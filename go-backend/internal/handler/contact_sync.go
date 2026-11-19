@@ -188,6 +188,40 @@ func syncContactsFromWA(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 	}
 }
 
+// groupParticipantPhones mengubah daftar peserta grup WA menjadi nomor HP unik.
+// WhatsApp kini memakai alamat LID ("123@lid") di grup; nomor aslinya ada di
+// PhoneNumber, atau dipetakan lewat resolveLID (cache LID→PN). Peserta LID yang
+// nomornya disembunyikan WhatsApp tidak bisa dipetakan — dihitung di unresolved
+// agar pengguna tahu, bukan hilang diam-diam. Entri bukan nomor (bot, dsb) dilewati.
+func groupParticipantPhones(parts []types.GroupParticipant, resolveLID func(lidUser string) string) (phones []string, unresolved int) {
+	seen := make(map[string]bool, len(parts))
+	for _, p := range parts {
+		phone := ""
+		switch {
+		case !p.PhoneNumber.IsEmpty() && p.PhoneNumber.Server == types.DefaultUserServer:
+			phone = p.PhoneNumber.User
+		case p.JID.Server == types.DefaultUserServer:
+			phone = p.JID.User
+		case p.JID.Server == types.HiddenUserServer:
+			if resolveLID != nil {
+				phone = resolveLID(p.JID.User)
+			}
+			if phone == "" {
+				unresolved++
+				continue
+			}
+		default:
+			continue
+		}
+		if !digitsOnly.MatchString(phone) || seen[phone] {
+			continue
+		}
+		seen[phone] = true
+		phones = append(phones, phone)
+	}
+	return phones, unresolved
+}
+
 // POST /api/contact-groups/sync — tarik grup WA yang diikuti perangkat beserta anggotanya.
 // Grup di-upsert berdasar JID WA (kolom wa_jid); anggota di-upsert jadi kontak dan
 // ditautkan sebagai anggota grup. Body: { "deviceId": 1 }
@@ -211,7 +245,8 @@ func syncGroupsFromWA(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 			return
 		}
 
-		groupsAdded, groupsUpdated, membersLinked, capped := 0, 0, 0, 0
+		groupsAdded, groupsUpdated, membersLinked, capped, membersUnresolved := 0, 0, 0, 0, 0
+		resolveLID := func(lidUser string) string { return wm.ResolvePNForLID(req.DeviceID, lidUser) }
 		// Batas kontak paket aktif (Item 7): anggota grup baru berhenti
 		// dibuat saat slot kontak habis; penautan anggota lama tetap jalan.
 		rem := remainingContactSlots(udb, userID)
@@ -229,16 +264,9 @@ func syncGroupsFromWA(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 				name = waJID
 			}
 
-			// kumpulkan nomor anggota yang valid
-			var phones []string
-			for _, p := range g.Participants {
-				if p.JID.Server != types.DefaultUserServer {
-					continue
-				}
-				if digitsOnly.MatchString(p.JID.User) {
-					phones = append(phones, p.JID.User)
-				}
-			}
+			// kumpulkan nomor anggota yang valid; peserta LID dipetakan ke nomor asli
+			phones, unresolved := groupParticipantPhones(g.Participants, resolveLID)
+			membersUnresolved += unresolved
 
 			var grp models.ContactGroup
 			err := udb.Where("user_id = ? AND waj_id = ?", userID, waJID).First(&grp).Error
@@ -285,12 +313,17 @@ func syncGroupsFromWA(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 			}
 		}
 
+		msg := fmt.Sprintf("Sync selesai: %d grup baru, %d grup diperbarui, %d anggota ditautkan", groupsAdded, groupsUpdated, membersLinked)
+		if membersUnresolved > 0 {
+			msg += fmt.Sprintf(", %d peserta dilewati (WhatsApp menyembunyikan nomornya)", membersUnresolved)
+		}
 		c.JSON(http.StatusOK, gin.H{
 			"groupsAdded":       groupsAdded,
 			"groupsUpdated":     groupsUpdated,
 			"membersLinked":     membersLinked,
+			"membersUnresolved": membersUnresolved,
 			"skippedDueToLimit": capped,
-			"message":           fmt.Sprintf("Sync selesai: %d grup baru, %d grup diperbarui, %d anggota ditautkan", groupsAdded, groupsUpdated, membersLinked),
+			"message":           msg,
 		})
 	}
 }
