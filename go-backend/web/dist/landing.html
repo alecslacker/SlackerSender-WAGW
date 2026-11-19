@@ -118,41 +118,33 @@
       content="Kirim pesan WhatsApp otomatis lewat API — personal, broadcast, terjadwal, dan balasan otomatis. Mulai gratis."
     />
     <meta name="twitter:image" content="https://wasender.slackercode.us/og-image.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700;800&family=VT323&display=swap"
-      media="print"
-      onload="this.media='all'"
-    />
     <link rel="preload" as="image" href="/hero/hero-poster.webp" fetchpriority="high" />
-    <script type="module" crossorigin src="/assets/landing-D6v0gIEM.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/index-BdRY7pml.js">
-    <link rel="modulepreload" crossorigin href="/assets/createLucideIcon-CAaC8vHF.js">
-    <link rel="modulepreload" crossorigin href="/assets/x-BpyXH_65.js">
-    <link rel="modulepreload" crossorigin href="/assets/webhook-427m9FBY.js">
-    <link rel="modulepreload" crossorigin href="/assets/send-DmszTofQ.js">
-    <link rel="modulepreload" crossorigin href="/assets/timer-DqadB3ke.js">
-    <link rel="modulepreload" crossorigin href="/assets/zap-BgrFotjC.js">
-    <link rel="modulepreload" crossorigin href="/assets/shield-check-DXxc19k9.js">
-    <link rel="modulepreload" crossorigin href="/assets/users-BkA1do2a.js">
-    <link rel="modulepreload" crossorigin href="/assets/calendar-clock-DFgH-Gto.js">
-    <link rel="modulepreload" crossorigin href="/assets/repeat-BrVA5eGa.js">
-    <link rel="modulepreload" crossorigin href="/assets/paperclip-B9X65PQ0.js">
-    <link rel="modulepreload" crossorigin href="/assets/bot-s61VI1GB.js">
-    <link rel="modulepreload" crossorigin href="/assets/bell-ring-BGsvHaCb.js">
-    <link rel="modulepreload" crossorigin href="/assets/history-DLgdqXUJ.js">
-    <link rel="modulepreload" crossorigin href="/assets/smartphone-DqViztLh.js">
-    <link rel="modulepreload" crossorigin href="/assets/key-round-CIr0thlX.js">
-    <link rel="modulepreload" crossorigin href="/assets/flask-conical-BwMhox4l.js">
-    <link rel="modulepreload" crossorigin href="/assets/play-KyAbf7wM.js">
-    <link rel="modulepreload" crossorigin href="/assets/star-Zl55IMrp.js">
-    <link rel="modulepreload" crossorigin href="/assets/check-CTeYvoDL.js">
-    <link rel="modulepreload" crossorigin href="/assets/chevron-down-Bp-Z1R7_.js">
-    <link rel="modulepreload" crossorigin href="/assets/chevron-right-CZXv_Ru3.js">
-    <link rel="modulepreload" crossorigin href="/assets/Landing-C1yYwAmy.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-CzVjX4Vc.css">
+    <script type="module" crossorigin src="/assets/landing-C1VpxCN_.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/index-DRNZn0LP.js">
+    <link rel="modulepreload" crossorigin href="/assets/createLucideIcon-BhsjQk5_.js">
+    <link rel="modulepreload" crossorigin href="/assets/x-BERbIccf.js">
+    <link rel="modulepreload" crossorigin href="/assets/webhook-BpiOQrLA.js">
+    <link rel="modulepreload" crossorigin href="/assets/send-BKXSdQVu.js">
+    <link rel="modulepreload" crossorigin href="/assets/timer-DirzDzyz.js">
+    <link rel="modulepreload" crossorigin href="/assets/zap-CJ8ui-aD.js">
+    <link rel="modulepreload" crossorigin href="/assets/shield-check-BkiBo1to.js">
+    <link rel="modulepreload" crossorigin href="/assets/users-D_yVG57R.js">
+    <link rel="modulepreload" crossorigin href="/assets/calendar-clock-BfKc2uC5.js">
+    <link rel="modulepreload" crossorigin href="/assets/repeat-BCpNYnSe.js">
+    <link rel="modulepreload" crossorigin href="/assets/paperclip-CN55zrS1.js">
+    <link rel="modulepreload" crossorigin href="/assets/bot-djRc05t1.js">
+    <link rel="modulepreload" crossorigin href="/assets/bell-ring-DSWXXCR7.js">
+    <link rel="modulepreload" crossorigin href="/assets/history-gXIFx8e7.js">
+    <link rel="modulepreload" crossorigin href="/assets/smartphone-B2l7k-KJ.js">
+    <link rel="modulepreload" crossorigin href="/assets/key-round-RvMY9AND.js">
+    <link rel="modulepreload" crossorigin href="/assets/flask-conical-D7N_t18d.js">
+    <link rel="modulepreload" crossorigin href="/assets/play-Wov0U0B4.js">
+    <link rel="modulepreload" crossorigin href="/assets/star-BG46cSV4.js">
+    <link rel="modulepreload" crossorigin href="/assets/check-ayQHRDgQ.js">
+    <link rel="modulepreload" crossorigin href="/assets/chevron-down-uhPILoEF.js">
+    <link rel="modulepreload" crossorigin href="/assets/chevron-right-DXrVspgQ.js">
+    <link rel="modulepreload" crossorigin href="/assets/Landing-Cg3dhwum.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-ChupJu5S.css">
   </head>
   <body>
     <div class="wa-boot" id="splash" role="status" aria-live="polite" aria-label="Memuat SlackerSender">
@@ -177,32 +169,6 @@
       </div>
     </div>
     <div id="root"></div>
-    <script>
-      // Splash dilepas setelah durasi minimum TERPENUHI dan aplikasi sudah
-      // ter-render (atau paksa lepas setelah 9 detik bila bundle gagal).
-      // User login → landing-entry redirect ke /dashboard, splash ikut hilang.
-      (function () {
-        var splash = document.getElementById('splash');
-        var MIN_MS = 3800;
-        var started = Date.now();
-        var done = false;
-        function hide() {
-          if (done) return;
-          done = true;
-          splash.classList.add('is-done');
-          setTimeout(function () { splash.remove(); }, 550);
-        }
-        function appReady() {
-          var root = document.getElementById('root');
-          return root && root.childElementCount > 0;
-        }
-        function wait() {
-          if (appReady() && Date.now() - started >= MIN_MS) return hide();
-          if (Date.now() - started > 9000) return hide();
-          setTimeout(wait, 60);
-        }
-        wait();
-      })();
-    </script>
+    <script src="/splash.js"></script>
   </body>
 </html>
