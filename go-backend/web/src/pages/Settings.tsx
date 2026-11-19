@@ -169,7 +169,7 @@ export default function Settings() {
                 className={cn(
                   "w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-colors",
                   isActive
-                    ? "bg-[#243370] dark:bg-[#4c63d2] text-white"
+                    ? "bg-[#15803d] dark:bg-[#15803d] text-white"
                     : "bg-secondary text-muted-foreground"
                 )}
               >

@@ -1,9 +1,8 @@
-/* Admin WaGataway — bahasa visual Nusa Admin, di-skin navy WaGataway.
+/* Admin SlackerSender — bahasa visual Nusa Admin, di-skin terminal hijau.
    Scope: HANYA halaman Admin (.admin-nusa). Jangan dipakai halaman lain.
    Token Nusa yang dipakai: radius 6px, shadow tipis, header tabel kecil
    uppercase, kartu statistik (label kecil, nilai besar, ikon chip).
-   Warna utama tetap navy #243370; mode gelap tetap palet navy aplikasi
-   (#0a1030 / #121a42) — palet gelap Nusa TIDAK dipakai. */
+   Warna mengikuti token tema terminal (hitam + hijau) dari index.css. */
 
 .admin-nusa {
   font-size: 14px;
@@ -56,7 +55,8 @@
 /* ── Shell admin (sidebar + area konten) ala Nusa ──────────────────────────
    Scope: .admin-shell hanya dipasang pada <aside> saat di /admin, jadi
    aturan di sini TIDAK PERNAH menyentuh sidebar halaman user.
-   Sidebar admin GELAP navy #0a1030 di kedua tema; scrollbar tipis ala Nusa. */
+   Sidebar admin memakai token tema terminal (hitam + hijau) dari index.css;
+   scrollbar tipis ala Nusa. */
 .admin-shell nav {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.2) transparent;

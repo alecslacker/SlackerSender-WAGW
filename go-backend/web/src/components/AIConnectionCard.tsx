@@ -47,7 +47,7 @@ const CURATED_MODELS: Record<string, string[]> = {
 const EDITABLE_BASE_URL: Record<string, string> = {
   deepseek: "https://api.deepseek.com",
   zai: "https://api.z.ai/api/paas/v4",
-  "9router": "https://ai.clipku.com/v1",
+  "9router": "https://9router.dutacorpora.co.id/v1",
   custom: "",
 };
 

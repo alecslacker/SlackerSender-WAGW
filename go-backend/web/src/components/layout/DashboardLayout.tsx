@@ -37,7 +37,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       // header ikut kegeser hilang. dvh mengikuti tinggi viewport aktual.
       className={cn(
         "flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden",
-        isAdminArea ? "bg-[#f3f5f9] dark:bg-[#0a1030]" : "bg-background"
+        isAdminArea ? "bg-[#f3f5f9] dark:bg-[#050805]" : "bg-background"
       )}
     >
       {/* Mobile backdrop */}
@@ -69,7 +69,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             className={cn(
               "absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm transition-opacity duration-200",
               isAdminArea
-                ? "bg-[#f3f5f9]/80 dark:bg-[#0a1030]/80"
+                ? "bg-[#f3f5f9]/80 dark:bg-[#050805]/80"
                 : "bg-background/80",
               transitioning ? "opacity-100" : "pointer-events-none opacity-0"
             )}

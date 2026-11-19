@@ -28,7 +28,7 @@ interface ShortLink {
   isActive: boolean;
 }
 
-const shortUrl = (code: string) => `https://wa.clipku.com/api/l/${code}`;
+const shortUrl = (code: string) => `${window.location.origin}/api/l/${code}`;
 
 function Modal({
   title,

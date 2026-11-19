@@ -73,7 +73,7 @@ const txStatusMeta: Record<string, { key: string; className: string }> = {
   failed: { key: "billing.txFailed", className: "bg-red-500/15 text-red-600 border-red-500/30" },
   expired: { key: "billing.txExpired", className: "bg-muted text-muted-foreground border-border" },
   cancelled: { key: "billing.txCancelled", className: "bg-muted text-muted-foreground border-border" },
-  refunded: { key: "billing.txRefunded", className: "bg-blue-500/15 text-blue-600 border-blue-500/30" },
+  refunded: { key: "billing.txRefunded", className: "bg-[#15803d]/15 text-[#4ade80] border-[#15803d]/30" },
 };
 
 function txStatusBadge(status: string, t: (key: string) => string) {
@@ -316,7 +316,7 @@ export default function Billing({ embedded = false }: { embedded?: boolean }) {
               {t("billing.currentPlan").replace("{name}", currentPlanName)}
               {/* Fitur 7: label Trial */}
               {sub?.isTrial && (
-                <span className="ml-2 align-middle inline-flex items-center rounded-full bg-[#243370]/10 text-[#243370] dark:text-blue-400 text-[11px] font-semibold px-2 py-0.5">
+                <span className="ml-2 align-middle inline-flex items-center rounded-full bg-[#15803d]/10 text-[#15803d] dark:text-[#4ade80] text-[11px] font-semibold px-2 py-0.5">
                   Trial
                 </span>
               )}
@@ -332,7 +332,7 @@ export default function Billing({ embedded = false }: { embedded?: boolean }) {
             {sub?.isTrial && (
               <Button
                 size="sm"
-                className="mt-2 bg-[#243370] hover:bg-[#1c2a5c] text-white"
+                className="mt-2 bg-[#15803d] hover:bg-[#0d1c10] text-white"
                 onClick={() =>
                   document
                     .getElementById("daftar-paket")
@@ -562,7 +562,7 @@ export default function Billing({ embedded = false }: { embedded?: boolean }) {
                       {t("billing.calcProrate")}
                     </div>
                   ) : quote?.prorate ? (
-                    <div className="rounded-lg border border-[#243370]/30 bg-[#243370]/5 p-3 space-y-2">
+                    <div className="rounded-lg border border-[#15803d]/30 bg-[#15803d]/5 p-3 space-y-2">
                       <p className="text-xs font-semibold text-foreground">
                         {t("billing.prorateTitle")}
                       </p>
@@ -599,7 +599,7 @@ export default function Billing({ embedded = false }: { embedded?: boolean }) {
                   )}
                   <div className="flex gap-2">
                     <Button
-                      className="flex-1 bg-[#243370] hover:bg-[#1c2a5c] text-white"
+                      className="flex-1 bg-[#15803d] hover:bg-[#0d1c10] text-white"
                       onClick={bayar}
                       disabled={paying || quoteLoading}
                     >
@@ -655,7 +655,7 @@ export default function Billing({ embedded = false }: { embedded?: boolean }) {
                     </p>
                   </div>
                   <Button
-                    className="w-full bg-[#243370] hover:bg-[#1c2a5c] text-white"
+                    className="w-full bg-[#15803d] hover:bg-[#0d1c10] text-white"
                     onClick={() => window.open(paymentUrl, "_blank", "noopener")}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />

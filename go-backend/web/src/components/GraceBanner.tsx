@@ -47,7 +47,7 @@ export default function GraceBanner() {
             </p>
             <Button
               size="sm"
-              className="mt-2 bg-[#243370] hover:bg-[#1c2a5c] text-white"
+              className="mt-2 bg-[#15803d] hover:bg-[#0d1c10] text-white"
               onClick={() => navigate("/billing?perpanjang=1")}
             >
               {t("graceBanner.renewNow")}
@@ -77,7 +77,7 @@ export default function GraceBanner() {
             </p>
             <Button
               size="sm"
-              className="mt-2 bg-[#243370] hover:bg-[#1c2a5c] text-white"
+              className="mt-2 bg-[#15803d] hover:bg-[#0d1c10] text-white"
               onClick={() => navigate("/billing?perpanjang=1")}
             >
               {t("graceBanner.renewNow")}

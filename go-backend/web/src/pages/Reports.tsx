@@ -89,7 +89,7 @@ export default function Reports({ embedded = false }: { embedded?: boolean }) {
   );
 
   const cards = [
-    { label: t("reports.sent"), value: totals.sent, icon: Send, cls: "text-[#243370] dark:text-blue-400" },
+    { label: t("reports.sent"), value: totals.sent, icon: Send, cls: "text-[#15803d] dark:text-[#4ade80]" },
     { label: t("reports.failed"), value: totals.failed, icon: XCircle, cls: "text-red-500" },
     { label: t("reports.read"), value: totals.read, icon: Eye, cls: "text-emerald-500" },
   ];
@@ -108,7 +108,7 @@ export default function Reports({ embedded = false }: { embedded?: boolean }) {
             {cards.map((c) => (
               <Card key={c.label}>
                 <CardContent className="p-4 flex items-center gap-3">
-                  <span className="w-11 h-11 rounded-2xl bg-[#243370] flex items-center justify-center shrink-0">
+                  <span className="w-11 h-11 rounded-2xl bg-[#15803d] flex items-center justify-center shrink-0">
                     <c.icon className="w-5 h-5 text-white" />
                   </span>
                   <div>

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "wouter";
-import { Send, Zap, ShieldCheck, MessageCircle } from "lucide-react";
+import { Send, Zap, ShieldCheck } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 
 export default function AuthLayout({
@@ -33,13 +33,11 @@ export default function AuthLayout({
   return (
     <div className="min-h-screen flex bg-background">
       {/* Panel kiri — branding (desktop) */}
-      <div className="hidden lg:flex w-[44%] xl:w-[46%] bg-[#243370] text-white flex-col justify-between p-10 xl:p-12 shrink-0">
+      <div className="hidden lg:flex w-[44%] xl:w-[46%] bg-[#061006] text-white flex-col justify-between p-10 xl:p-12 shrink-0">
         <Link href="/">
           <span className="flex items-center gap-2.5 cursor-pointer">
-            <span className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center">
-              <MessageCircle className="w-5 h-5" />
-            </span>
-            <span className="text-xl font-bold tracking-tight">WaGataway</span>
+            <img src="/slackercode-logo.png" alt="Logo SlackerSender" className="h-9 w-9" />
+            <span className="text-xl font-bold tracking-tight">SlackerSender</span>
           </span>
         </Link>
 
@@ -77,11 +75,9 @@ export default function AuthLayout({
       {/* Panel kanan — form */}
       <div className="flex-1 flex flex-col">
         {/* Header mobile */}
-        <div className="lg:hidden bg-[#243370] text-white px-5 py-4 flex items-center gap-2.5">
-          <span className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center">
-            <MessageCircle className="w-4 h-4" />
-          </span>
-          <span className="font-bold tracking-tight">WaGataway</span>
+        <div className="lg:hidden bg-[#061006] text-white px-5 py-4 flex items-center gap-2.5">
+          <img src="/slackercode-logo.png" alt="Logo SlackerSender" className="h-8 w-8" />
+          <span className="font-bold tracking-tight">SlackerSender</span>
         </div>
 
         <div className="flex-1 flex items-center justify-center px-4 py-10 sm:px-8">

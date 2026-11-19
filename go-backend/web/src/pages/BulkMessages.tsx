@@ -383,12 +383,12 @@ export default function BulkMessages({ embedded = false }: { embedded?: boolean 
                       key={d.id}
                       className={`flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm ${
                         isConnected ? "cursor-pointer hover:bg-muted/50" : "opacity-50 cursor-not-allowed"
-                      } ${checked ? "border-[#243370] bg-[#243370]/5" : ""}`}
+                      } ${checked ? "border-[#15803d] bg-[#15803d]/5" : ""}`}
                       title={isConnected ? undefined : t("bulkMessages.deviceOfflineTitle")}
                     >
                       <input
                         type="checkbox"
-                        className="h-4 w-4 shrink-0 accent-[#243370]"
+                        className="h-4 w-4 shrink-0 accent-[#15803d]"
                         checked={checked}
                         disabled={!isConnected}
                         onChange={() => toggleDevice(d.id)}
@@ -495,18 +495,18 @@ export default function BulkMessages({ embedded = false }: { embedded?: boolean 
 
           <label
             className={`flex items-start gap-3 rounded-lg border border-border px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/50 ${
-              scheduleEnabled ? "border-[#243370] bg-[#243370]/5" : ""
+              scheduleEnabled ? "border-[#15803d] bg-[#15803d]/5" : ""
             }`}
           >
             <input
               type="checkbox"
-              className="h-4 w-4 mt-0.5 shrink-0 accent-[#243370]"
+              className="h-4 w-4 mt-0.5 shrink-0 accent-[#15803d]"
               checked={scheduleEnabled}
               onChange={(e) => setScheduleEnabled(e.target.checked)}
             />
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-1.5 font-medium">
-                <CalendarClock className="w-3.5 h-3.5 text-[#243370]" />
+                <CalendarClock className="w-3.5 h-3.5 text-[#15803d]" />
                 {t("bulkMessages.scheduleTitle")}
               </span>
               <span className="block text-xs text-muted-foreground mt-0.5">
@@ -550,18 +550,18 @@ export default function BulkMessages({ embedded = false }: { embedded?: boolean 
 
           <label
             className={`flex items-start gap-3 rounded-lg border border-border px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/50 ${
-              autoClean ? "border-[#243370] bg-[#243370]/5" : ""
+              autoClean ? "border-[#15803d] bg-[#15803d]/5" : ""
             }`}
           >
             <input
               type="checkbox"
-              className="h-4 w-4 mt-0.5 shrink-0 accent-[#243370]"
+              className="h-4 w-4 mt-0.5 shrink-0 accent-[#15803d]"
               checked={autoClean}
               onChange={(e) => setAutoClean(e.target.checked)}
             />
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-1.5 font-medium">
-                <Filter className="w-3.5 h-3.5 text-[#243370]" />
+                <Filter className="w-3.5 h-3.5 text-[#15803d]" />
                 {t("bulkMessages.autoCleanTitle")}
               </span>
               <span className="block text-xs text-muted-foreground mt-0.5">
@@ -586,7 +586,7 @@ export default function BulkMessages({ embedded = false }: { embedded?: boolean 
               </button>
             </div>
             <p className="text-sm">
-              <span className="font-semibold text-[#243370]">{t("bulkMessages.confirmSummary").replace("{valid}", String(checkResult.validCount))}</span>
+              <span className="font-semibold text-[#15803d]">{t("bulkMessages.confirmSummary").replace("{valid}", String(checkResult.validCount))}</span>
               {checkResult.excludedCount > 0 && (
                 <span>, <span className="font-semibold text-red-600">{t("bulkMessages.confirmExcluded").replace("{excluded}", String(checkResult.excludedCount))}</span></span>
               )}

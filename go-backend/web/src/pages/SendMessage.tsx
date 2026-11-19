@@ -509,7 +509,7 @@ export default function SendMessage({ embedded = false }: { embedded?: boolean }
                       checked={pollMultiple}
                       onChange={(e) => setPollMultiple(e.target.checked)}
                       disabled={sending}
-                      className="h-4 w-4 rounded border-border accent-[#243370]"
+                      className="h-4 w-4 rounded border-border accent-[#15803d]"
                     />
                     {t("sendMessage.allowMultiple")}
                   </label>
@@ -706,7 +706,7 @@ export default function SendMessage({ embedded = false }: { embedded?: boolean }
                       checked={locLive}
                       onChange={(e) => setLocLive(e.target.checked)}
                       disabled={sending}
-                      className="h-4 w-4 rounded border-border accent-[#243370]"
+                      className="h-4 w-4 rounded border-border accent-[#15803d]"
                     />
                     {t("sendMessage.liveLocation")}
                   </label>

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
  * Button aplikasi di atas Kumo UI (Cloudflare).
  * API variant/size tetap sama seperti sebelumnya sehingga semua halaman
  * tidak perlu diubah; tampilannya mengikuti design system Kumo dengan
- * brand navy WaGataway. Bentuk pill dipertahankan (rounded-full).
+ * brand navy SlackerSender. Bentuk pill dipertahankan (rounded-full).
  */
 
 type AppVariant =
@@ -59,7 +59,7 @@ const sizeClasses: Record<AppSize, string> = {
 
 // Soft tint ala MPWA untuk aksi berwanti (di atas Kumo secondary)
 const tintClasses: Partial<Record<AppVariant, string>> = {
-  tint: "bg-[#243370]/10 text-[#243370] border border-[#243370]/25 hover:bg-[#243370]/20 dark:bg-[#4c63d2]/15 dark:text-[#aab6f5] dark:border-[#4c63d2]/30 dark:hover:bg-[#4c63d2]/25",
+  tint: "bg-[#15803d]/10 text-[#15803d] border border-[#15803d]/25 hover:bg-[#15803d]/20 dark:bg-[#15803d]/15 dark:text-[#86efac] dark:border-[#15803d]/30 dark:hover:bg-[#15803d]/25",
   success:
     "bg-green-500/10 text-green-700 border border-green-500/25 hover:bg-green-500/20 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30 dark:hover:bg-green-500/25",
   warning:

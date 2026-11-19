@@ -97,7 +97,7 @@ export default function AutomationHub() {
               <span key={s.label} className="inline-flex items-center gap-1.5">
                 <span
                   className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${
-                    s.value > 0 ? "bg-[#243370] text-white" : "bg-muted text-muted-foreground"
+                    s.value > 0 ? "bg-[#15803d] text-white" : "bg-muted text-muted-foreground"
                   }`}
                 >
                   {s.value}

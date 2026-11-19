@@ -318,6 +318,19 @@ const fmtDayShort = (iso: string) => {
   return isNaN(d.getTime()) ? iso : `${d.getDate()}/${d.getMonth() + 1}`;
 };
 
+// Tooltip recharts bawaannya putih (#fff) dengan teks gelap, tidak terbaca di
+// dark mode. Warna diikat ke token tema (index.css) supaya ikut light/dark.
+const chartTooltipProps = {
+  contentStyle: {
+    borderRadius: 6,
+    fontSize: 12,
+    backgroundColor: "var(--card-bg)",
+    border: "1px solid var(--border-color)",
+  },
+  labelStyle: { color: "var(--muted-fg)" },
+  itemStyle: { color: "var(--fg)" },
+};
+
 /* ── Tab: Ringkasan ─────────────────────────────────── */
 
 function OverviewTab() {
@@ -368,8 +381,8 @@ function OverviewTab() {
   };
 
   const stats = [
-    { icon: Users, label: t("admin.statUsers"), value: fmtNum(data?.totalUsers ?? 0), tint: "bg-[#243370]/10 text-[#243370] dark:text-[#8fa0e8]" },
-    { icon: Smartphone, label: t("admin.statDevices"), value: fmtNum(data?.totalDevices ?? 0), tint: "bg-violet-500/10 text-violet-600" },
+    { icon: Users, label: t("admin.statUsers"), value: fmtNum(data?.totalUsers ?? 0), tint: "bg-[#15803d]/10 text-[#15803d] dark:text-[#4ade80]" },
+    { icon: Smartphone, label: t("admin.statDevices"), value: fmtNum(data?.totalDevices ?? 0), tint: "bg-[#15803d]/10 text-[#4ade80]" },
     { icon: MessageSquareText, label: t("admin.statMessages"), value: fmtNum(data?.totalMessages ?? 0), tint: "bg-emerald-500/10 text-emerald-600" },
     { icon: Wallet, label: t("admin.statRevenue"), value: fmtRp(data?.totalRevenue ?? 0), tint: "bg-amber-500/10 text-amber-600" },
   ];
@@ -406,18 +419,18 @@ function OverviewTab() {
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={trends} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
                         <XAxis
                           dataKey="date"
                           tickFormatter={fmtDayShort}
-                          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                          tick={{ fontSize: 10, fill: "var(--muted-fg)" }}
                           axisLine={false}
                           tickLine={false}
                           interval="preserveStartEnd"
                         />
                         <YAxis
                           allowDecimals={false}
-                          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                          tick={{ fontSize: 10, fill: "var(--muted-fg)" }}
                           axisLine={false}
                           tickLine={false}
                           width={36}
@@ -425,9 +438,10 @@ function OverviewTab() {
                         <Tooltip
                           labelFormatter={(d) => fmtDayShort(String(d))}
                           formatter={(value) => [fmtNum(Number(value)), t("admin.chartUsers")]}
-                          contentStyle={{ borderRadius: 6, fontSize: 12 }}
+                          cursor={{ fill: "var(--border-color)", fillOpacity: 0.5 }}
+                          {...chartTooltipProps}
                         />
-                        <Bar dataKey="signups" name={t("admin.chartUsers")} fill="#243370" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="signups" name={t("admin.chartUsers")} fill="#15803d" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -443,18 +457,18 @@ function OverviewTab() {
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={trends} margin={{ top: 4, right: 8, left: -4, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
                         <XAxis
                           dataKey="date"
                           tickFormatter={fmtDayShort}
-                          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                          tick={{ fontSize: 10, fill: "var(--muted-fg)" }}
                           axisLine={false}
                           tickLine={false}
                           interval="preserveStartEnd"
                         />
                         <YAxis
                           tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 1000)}rb` : `${v}`)}
-                          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                          tick={{ fontSize: 10, fill: "var(--muted-fg)" }}
                           axisLine={false}
                           tickLine={false}
                           width={44}
@@ -462,7 +476,8 @@ function OverviewTab() {
                         <Tooltip
                           labelFormatter={(d) => fmtDayShort(String(d))}
                           formatter={(value) => [fmtRp(Number(value)), t("admin.chartRevenue")]}
-                          contentStyle={{ borderRadius: 6, fontSize: 12 }}
+                          cursor={{ stroke: "var(--muted-fg)", strokeWidth: 1 }}
+                          {...chartTooltipProps}
                         />
                         <Area
                           type="monotone"
@@ -1485,10 +1500,10 @@ function VouchersTab() {
   // Kartu ringkasan analitik (pola yang sama seperti tab Overview).
   const voucherStats = analytics
     ? [
-        { icon: Ticket, label: t("admin.statTotalVouchers"), value: fmtNum(analytics.totalVouchers), tint: "bg-violet-500/10 text-violet-600" },
+        { icon: Ticket, label: t("admin.statTotalVouchers"), value: fmtNum(analytics.totalVouchers), tint: "bg-[#15803d]/10 text-[#4ade80]" },
         { icon: Users, label: t("admin.statTotalRedemptions"), value: fmtNum(analytics.totalRedemptions), tint: "bg-emerald-500/10 text-emerald-600" },
         { icon: Smartphone, label: t("admin.statTrialRedemptions"), value: fmtNum(analytics.trialRedemptions), tint: "bg-amber-500/10 text-amber-600" },
-        { icon: Wallet, label: t("admin.statTrialConversion"), value: `${fmtNum(analytics.trialConverted)} (${fmtPct(analytics.trialConversionRate)})`, tint: "bg-[#243370]/10 text-[#243370] dark:text-[#8fa0e8]" },
+        { icon: Wallet, label: t("admin.statTrialConversion"), value: `${fmtNum(analytics.trialConverted)} (${fmtPct(analytics.trialConversionRate)})`, tint: "bg-[#15803d]/10 text-[#15803d] dark:text-[#4ade80]" },
       ]
     : [];
   const minPlanOptions = [
@@ -1575,7 +1590,7 @@ function VouchersTab() {
                     <td className="p-3">
                       <Badge variant="outline">{typeLabel(v.type)}</Badge>
                       {v.newUsersOnly && (
-                        <Badge variant="outline" className="ml-1 border-sky-500/30 text-sky-600">
+                        <Badge variant="outline" className="ml-1 border-[#15803d]/30 text-[#4ade80]">
                           {t("admin.voucherNewUsersBadge")}
                         </Badge>
                       )}
@@ -2115,7 +2130,7 @@ function SettingsTab() {
       label: t("admin.settingSiteNameLabel"),
       desc: t("admin.settingSiteNameDesc"),
       type: "text",
-      def: "WaGataway",
+      def: "SlackerSender",
     },
     {
       key: "support_email",
@@ -2167,7 +2182,7 @@ function SettingsTab() {
       label: t("admin.settingWebhookUrlLabel"),
       desc: t("admin.settingWebhookUrlDesc"),
       type: "text",
-      def: "https://wa.clipku.com/api/billing/clipkupay/webhook",
+      def: `${window.location.origin}/api/billing/clipkupay/webhook`,
       group: "gateway",
     },
     {
@@ -2924,7 +2939,7 @@ function HealthTab() {
             "w-3 h-3 rounded-full shrink-0",
             status === "ok" && "bg-green-500",
             status === "error" && "bg-red-500",
-            status === "disabled" && "bg-slate-400"
+            status === "disabled" && "bg-muted"
           )}
         />
         <div>

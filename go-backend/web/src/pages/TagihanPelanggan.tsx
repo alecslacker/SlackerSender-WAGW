@@ -49,7 +49,7 @@ const txStatusMeta: Record<string, { key: string; className: string }> = {
   failed: { key: "billing.txFailed", className: "bg-red-500/15 text-red-600 border-red-500/30" },
   expired: { key: "billing.txExpired", className: "bg-muted text-muted-foreground border-border" },
   cancelled: { key: "billing.txCancelled", className: "bg-muted text-muted-foreground border-border" },
-  refunded: { key: "billing.txRefunded", className: "bg-blue-500/15 text-blue-600 border-blue-500/30" },
+  refunded: { key: "billing.txRefunded", className: "bg-[#15803d]/15 text-[#4ade80] border-[#15803d]/30" },
 };
 
 function txStatusBadge(status: string, t: (key: string) => string) {
@@ -221,7 +221,7 @@ export default function TagihanPelanggan() {
               <CardTitle className="text-sm">{t("billing.invTitle")}</CardTitle>
               <p className="text-xs text-muted-foreground mt-0.5">{t("billing.invSubtitle")}</p>
             </div>
-            <Button size="sm" className="bg-[#243370] hover:bg-[#1c2a5c] text-white shrink-0" onClick={openInvCreate}>
+            <Button size="sm" className="bg-[#15803d] hover:bg-[#0d1c10] text-white shrink-0" onClick={openInvCreate}>
               {t("billing.invCreate")}
             </Button>
           </CardHeader>
@@ -456,7 +456,7 @@ export default function TagihanPelanggan() {
                 {invCreateError && <p className="text-sm text-destructive">{invCreateError}</p>}
                 <div className="flex gap-2">
                   <Button
-                    className="flex-1 bg-[#243370] hover:bg-[#1c2a5c] text-white"
+                    className="flex-1 bg-[#15803d] hover:bg-[#0d1c10] text-white"
                     onClick={createInvoice}
                     disabled={invCreating || invTotal <= 0}
                   >
@@ -542,7 +542,7 @@ export default function TagihanPelanggan() {
                 )}
                 {invDetail.status === "pending" && invDetail.paymentUrl && (
                   <Button
-                    className="w-full bg-[#243370] hover:bg-[#1c2a5c] text-white"
+                    className="w-full bg-[#15803d] hover:bg-[#0d1c10] text-white"
                     onClick={() => window.open(invDetail.paymentUrl, "_blank", "noopener")}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />

@@ -160,7 +160,7 @@ export default function Affiliate({ embedded = false }: { embedded?: boolean }) 
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <Card>
                 <CardContent className="p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3">
-                  <span className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#243370] flex items-center justify-center shrink-0">
+                  <span className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#15803d] flex items-center justify-center shrink-0">
                     <Wallet className="w-5 h-5 text-white" />
                   </span>
                   <div className="min-w-0">
@@ -171,7 +171,7 @@ export default function Affiliate({ embedded = false }: { embedded?: boolean }) 
               </Card>
               <Card>
                 <CardContent className="p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3">
-                  <span className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#243370] flex items-center justify-center shrink-0">
+                  <span className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#15803d] flex items-center justify-center shrink-0">
                     <Users className="w-5 h-5 text-white" />
                   </span>
                   <div className="min-w-0">

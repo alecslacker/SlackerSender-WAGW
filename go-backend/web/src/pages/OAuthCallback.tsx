@@ -31,7 +31,7 @@ export default function OAuthCallback() {
         <>
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           <button
-            className="text-sm font-medium text-[#243370] dark:text-blue-400 hover:underline"
+            className="text-sm font-medium text-[#15803d] dark:text-[#4ade80] hover:underline"
             onClick={() => setLocation("/login")}
           >
             {t("oAuthCallback.backToLogin")}
@@ -39,7 +39,7 @@ export default function OAuthCallback() {
         </>
       ) : (
         <>
-          <Loader2 className="w-8 h-8 animate-spin text-[#243370] dark:text-blue-400" />
+          <Loader2 className="w-8 h-8 animate-spin text-[#15803d] dark:text-[#4ade80]" />
           <p className="text-sm text-muted-foreground">{t("oAuthCallback.completingLogin")}</p>
         </>
       )}

@@ -97,7 +97,7 @@ function Switch({
       onClick={onChange}
       className={cn(
         "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-        checked ? "bg-[#243370]" : "bg-muted"
+        checked ? "bg-[#15803d]" : "bg-muted"
       )}
     >
       <span
@@ -645,7 +645,7 @@ export default function MenuBot({ embedded = false }: { embedded?: boolean }) {
                   ) : (
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2.5 min-w-0">
-                        <span className="w-6 h-6 rounded-md bg-[#243370] text-white text-[11px] font-semibold flex items-center justify-center shrink-0">
+                        <span className="w-6 h-6 rounded-md bg-[#15803d] text-white text-[11px] font-semibold flex items-center justify-center shrink-0">
                           {idx + 1}
                         </span>
                         <div className="min-w-0">

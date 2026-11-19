@@ -77,9 +77,9 @@ interface GroupDoc {
 
 const methodStyle: Record<HttpMethod, string> = {
   GET: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-  POST: "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30",
+  POST: "bg-[#15803d]/15 text-[#4ade80] dark:text-[#4ade80] border-[#15803d]/30",
   PUT: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
-  PATCH: "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30",
+  PATCH: "bg-[#15803d]/15 text-[#4ade80] dark:text-[#4ade80] border-[#15803d]/30",
   DELETE: "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30",
 };
 
@@ -96,6 +96,15 @@ function buildGroups(baseUrl: string, t: (key: string) => string): GroupDoc[] {
   };
 
   const J = (o: object) => JSON.stringify(o, null, 4);
+
+  // curl gaya Slackersender: api_key DI BODY JSON (kontrak asli), tanpa header X-API-Key.
+  const compatCurl = (path: string, body: Record<string, string>) =>
+    [
+      `curl -X POST \\`,
+      `  ${baseUrl}${path} \\`,
+      `  -H "Content-Type: application/json" \\`,
+      `  -d '${JSON.stringify({ api_key: "YOUR_API_KEY", ...body }, null, 4).replace(/\n/g, "\n  ")}'`,
+    ].join("\n");
 
   return [
     {
@@ -116,8 +125,8 @@ function buildGroups(baseUrl: string, t: (key: string) => string): GroupDoc[] {
             { name: "replyTo", type: "string", required: false, desc: t("apiDocs.paramReplyTo") },
             { name: "idempotencyKey", type: "string", required: false, desc: t("apiDocs.paramIdempotencyKey") },
           ],
-          bodyExample: J({ deviceId: 1, to: "6281234567890", type: "text", content: "Halo dari API WaGataway!" }),
-          curl: curl("POST", "/api/messages/send", `{\n    "deviceId": 1,\n    "to": "6281234567890",\n    "type": "text",\n    "content": "Halo dari API WaGataway!"\n  }`),
+          bodyExample: J({ deviceId: 1, to: "6281234567890", type: "text", content: "Halo dari API SlackerSender!" }),
+          curl: curl("POST", "/api/messages/send", `{\n    "deviceId": 1,\n    "to": "6281234567890",\n    "type": "text",\n    "content": "Halo dari API SlackerSender!"\n  }`),
         },
         {
           method: "POST",
@@ -240,6 +249,83 @@ function buildGroups(baseUrl: string, t: (key: string) => string): GroupDoc[] {
           title: t("apiDocs.msgDeleteTitle"),
           curl: curl("DELETE", "/api/messages/1"),
           note: t("apiDocs.msgDeleteNote"),
+        },
+      ],
+    },
+    {
+      // Kontrak Slackersender: path di ROOT, api_key di body (bukan header).
+      title: t("apiDocs.compatGroupTitle"),
+      desc: t("apiDocs.compatGroupDesc"),
+      endpoints: [
+        {
+          method: "POST",
+          path: "/send-message",
+          title: t("apiDocs.compatSendMsgTitle"),
+          params: [
+            { name: "api_key", type: "string", required: true, desc: t("apiDocs.paramCompatApiKey") },
+            { name: "sender", type: "string", required: false, desc: t("apiDocs.paramCompatSender") },
+            { name: "number", type: "string", required: true, desc: t("apiDocs.paramCompatNumber") },
+            { name: "message", type: "string", required: true, desc: t("apiDocs.paramCompatMessage") },
+          ],
+          bodyExample: J({ sender: "628xxxxxxxxxx", number: "6281234567890", message: "Halo dari SlackerSender!" }),
+          curl: compatCurl("/send-message", { sender: "628xxxxxxxxxx", number: "6281234567890", message: "Halo dari SlackerSender!" }),
+          note: `${t("apiDocs.compatSendNote")} ${t("apiDocs.compatTryNote")}`,
+        },
+        {
+          method: "POST",
+          path: "/send-media",
+          title: t("apiDocs.compatSendMediaTitle"),
+          params: [
+            { name: "api_key", type: "string", required: true, desc: t("apiDocs.paramCompatApiKey") },
+            { name: "sender", type: "string", required: false, desc: t("apiDocs.paramCompatSender") },
+            { name: "number", type: "string", required: true, desc: t("apiDocs.paramCompatNumber") },
+            { name: "media_type", type: "string", required: true, desc: t("apiDocs.paramCompatMediaType") },
+            { name: "url", type: "string", required: true, desc: t("apiDocs.paramCompatUrl") },
+            { name: "caption", type: "string", required: false, desc: t("apiDocs.paramCompatCaption") },
+          ],
+          bodyExample: J({ sender: "628xxxxxxxxxx", number: "6281234567890", media_type: "document", caption: "Invoice #0912", url: "https://example.com/invoice-0912.pdf" }),
+          curl: compatCurl("/send-media", { sender: "628xxxxxxxxxx", number: "6281234567890", media_type: "document", caption: "Invoice #0912", url: "https://example.com/invoice-0912.pdf" }),
+          note: t("apiDocs.compatSendNote"),
+        },
+        {
+          method: "POST",
+          path: "/send-location",
+          title: t("apiDocs.compatSendLocTitle"),
+          params: [
+            { name: "api_key", type: "string", required: true, desc: t("apiDocs.paramCompatApiKey") },
+            { name: "sender", type: "string", required: false, desc: t("apiDocs.paramCompatSender") },
+            { name: "number", type: "string", required: true, desc: t("apiDocs.paramCompatNumber") },
+            { name: "latitude", type: "string", required: true, desc: t("apiDocs.paramCompatLat") },
+            { name: "longitude", type: "string", required: true, desc: t("apiDocs.paramCompatLng") },
+          ],
+          bodyExample: J({ sender: "628xxxxxxxxxx", number: "6281234567890", latitude: "-6.175392", longitude: "106.827153" }),
+          curl: compatCurl("/send-location", { sender: "628xxxxxxxxxx", number: "6281234567890", latitude: "-6.175392", longitude: "106.827153" }),
+          note: t("apiDocs.compatSendNote"),
+        },
+        {
+          method: "POST",
+          path: "/info-device",
+          title: t("apiDocs.compatInfoDeviceTitle"),
+          params: [
+            { name: "api_key", type: "string", required: true, desc: t("apiDocs.paramCompatApiKey") },
+            { name: "number", type: "string", required: true, desc: t("apiDocs.paramCompatDeviceNumber") },
+          ],
+          bodyExample: J({ number: "628xxxxxxxxxx" }),
+          curl: compatCurl("/info-device", { number: "628xxxxxxxxxx" }),
+          note: t("apiDocs.compatInfoDeviceNote"),
+        },
+        {
+          method: "POST",
+          path: "/check-number",
+          title: t("apiDocs.compatCheckNumberTitle"),
+          params: [
+            { name: "api_key", type: "string", required: true, desc: t("apiDocs.paramCompatApiKey") },
+            { name: "sender", type: "string", required: false, desc: t("apiDocs.paramCompatSender") },
+            { name: "number", type: "string", required: true, desc: t("apiDocs.paramCompatNumber") },
+          ],
+          bodyExample: J({ sender: "628xxxxxxxxxx", number: "6281234567890" }),
+          curl: compatCurl("/check-number", { sender: "628xxxxxxxxxx", number: "6281234567890" }),
+          note: t("apiDocs.compatCheckNumberNote"),
         },
       ],
     },
@@ -1251,7 +1337,7 @@ function PublicHeader() {
     <header className="border-b border-border bg-card/90 backdrop-blur sticky top-0 z-40">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-base font-bold tracking-tight">WaGataway</span>
+          <span className="text-base font-bold tracking-tight">SlackerSender</span>
           <Badge variant="secondary" className="text-[10px]">{t("apiDocs.pageTitle")}</Badge>
         </div>
         <div className="flex items-center gap-2">

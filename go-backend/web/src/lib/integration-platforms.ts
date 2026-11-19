@@ -124,7 +124,7 @@ export const PLATFORMS: PlatformGuide[] = [
       "Buat integrasi WooCommerce di halaman ini. Pada kolom Template isi misal: \"Order baru #{{id}} dari {{billing.first_name}} (Rp{{total}}) — {{status}}\".",
       "Salin URL Inbox.",
       "Di WordPress: WooCommerce → Settings → Advanced → Webhooks → Add webhook.",
-      "Name: \"WaGataway Order\", Status: Active, Topic: \"Order created\" (atau \"Order updated\").",
+      "Name: \"SlackerSender Order\", Status: Active, Topic: \"Order created\" (atau \"Order updated\").",
       "Delivery URL: tempel URL Inbox. Secret: kosongkan. API Version: WP REST API v3. Save.",
       "WooCommerce akan POST data order ke URL itu. Field yang tersedia: id, total, currency, status, billing.{first_name,last_name,phone,email}, line_items[].",
       "Untuk nomor tujuan: isi \"to\" dari field billing.phone via template tidak bisa — gunakan plugin Code Snippets untuk memetakan nomor admin/toko sebagai tujuan, atau minta developer menambahkan custom field.",
@@ -315,7 +315,7 @@ add_action('comment_post', function($comment_id) {
     slug: "ifttt",
     logo: "ifttt.svg",
     name: "IFTTT",
-    desc: "Applet IFTTT → Webhooks POST ke WaGataway.",
+    desc: "Applet IFTTT → Webhooks POST ke SlackerSender.",
     initials: "IF",
     tile: "bg-sky-600",
     steps: [

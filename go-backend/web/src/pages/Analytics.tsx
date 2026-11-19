@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { apiFetch, apiGet } from "@/lib/api";
 import { useLang } from "@/lib/i18n";
 
-const NAVY = "#243370";
+const NAVY = "#15803d";
 
 interface Overview {
   totalMessages: number;
@@ -374,7 +374,7 @@ export default function Analytics({ embedded = false }: { embedded?: boolean }) 
               value={(overview?.sentMessages ?? 0).toLocaleString("id-ID")}
               badge={
                 <Badge
-                  className="mt-1.5 bg-[#243370]/10 text-[10px] text-[#243370] dark:bg-[#4c63d2]/15 dark:text-[#aab6f5]"
+                  className="mt-1.5 bg-[#15803d]/10 text-[10px] text-[#15803d] dark:bg-[#15803d]/15 dark:text-[#86efac]"
                 >
                   {(overview?.deliveryRate ?? 0).toFixed(1)}%
                 </Badge>
@@ -562,7 +562,7 @@ export default function Analytics({ embedded = false }: { embedded?: boolean }) 
                         <p className="text-xs text-muted-foreground">{s.label}</p>
                         <p className="text-2xl font-bold mt-1">{fmtNum(s.value)}</p>
                         {s.rate !== null && (
-                          <Badge className="mt-1.5 bg-[#243370]/10 text-[11px] text-[#243370] dark:bg-[#4c63d2]/15 dark:text-[#aab6f5]">
+                          <Badge className="mt-1.5 bg-[#15803d]/10 text-[11px] text-[#15803d] dark:bg-[#15803d]/15 dark:text-[#86efac]">
                             {s.rate}
                           </Badge>
                         )}

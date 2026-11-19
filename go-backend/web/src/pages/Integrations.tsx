@@ -55,7 +55,7 @@ function PlatformIcon({ slug, size = "w-9 h-9" }: { slug: string; size?: string 
       className={cn(
         size,
         "rounded-lg text-white text-xs font-bold flex items-center justify-center shrink-0",
-        p?.tile ?? "bg-[#243370]"
+        p?.tile ?? "bg-[#15803d]"
       )}
     >
       {p?.initials ?? slug.slice(0, 2).toUpperCase()}
@@ -199,7 +199,7 @@ function GuideView({ guide, inbox }: { guide: PlatformGuide; inbox?: string }) {
         <ol className="space-y-2">
           {guide.steps.map((s, i) => (
             <li key={i} className="flex gap-2 text-sm">
-              <span className="shrink-0 w-5 h-5 rounded-full bg-[#243370] text-white text-[11px] flex items-center justify-center font-semibold">
+              <span className="shrink-0 w-5 h-5 rounded-full bg-[#15803d] text-white text-[11px] flex items-center justify-center font-semibold">
                 {i + 1}
               </span>
               <span className="text-muted-foreground">
@@ -336,7 +336,7 @@ export default function Integrations({ embedded = false }: { embedded?: boolean 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-              <PlugZap className="w-5 h-5 text-[#243370] dark:text-white" /> {t("integrations.title")}
+              <PlugZap className="w-5 h-5 text-[#15803d] dark:text-white" /> {t("integrations.title")}
             </h1>
             <p className="text-sm text-muted-foreground">
               {t("integrations.subtitle")}
@@ -468,7 +468,7 @@ export default function Integrations({ embedded = false }: { embedded?: boolean 
           {filteredPlatforms.map((p) => {
             const connected = connectedSlugs.has(p.slug);
             return (
-            <Card key={p.slug} className="hover:border-[#243370]/50 transition-colors">
+            <Card key={p.slug} className="hover:border-[#15803d]/50 transition-colors">
               <CardContent className="p-4 flex flex-col gap-2 h-full">
                 <div className="flex items-center gap-2">
                   <PlatformIcon slug={p.slug} />
@@ -705,7 +705,7 @@ function CreateModal({
             value={template}
             onChange={(e) => setTemplate(e.target.value)}
             rows={3}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#243370]/40"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#15803d]/40"
             placeholder='cth. Order baru #{{order.id}} dari {{order.customer}} (Rp{{order.total}})'
           />
           <p className="text-xs text-muted-foreground mt-1">
@@ -795,7 +795,7 @@ function EditModal({
             value={template}
             onChange={(e) => setTemplate(e.target.value)}
             rows={3}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#243370]/40"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#15803d]/40"
             placeholder='cth. Order baru #{{order.id}} dari {{order.customer}}'
           />
         </div>

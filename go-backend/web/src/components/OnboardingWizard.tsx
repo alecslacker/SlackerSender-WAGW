@@ -53,7 +53,7 @@ export default function OnboardingWizard({ onDone }: { onDone: () => void }) {
   // Langkah 3
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState(
-    "Halo! Ini pesan tes dari WaGataway 👋"
+    "Halo! Ini pesan tes dari SlackerSender 👋"
   );
   const [sending, setSending] = useState(false);
 
@@ -108,8 +108,8 @@ export default function OnboardingWizard({ onDone }: { onDone: () => void }) {
       await apiPost(`/devices/${id}/connect`);
       // beri jeda agar sesi sempat membuat QR
       await new Promise((r) => setTimeout(r, 1500));
-      const q = await apiGet<{ qr: string }>(`/devices/${id}/qr`);
-      if (q.qr) setQr(q.qr);
+      const q = await apiGet<{ qrImage: string }>(`/devices/${id}/qr`);
+      if (q.qrImage) setQr(q.qrImage);
       else setQrError(t("onboardingWizard.errQrNotReady"));
     } catch (e) {
       setQrError(e instanceof Error ? e.message : t("onboardingWizard.errConnectFailed"));
@@ -136,10 +136,10 @@ export default function OnboardingWizard({ onDone }: { onDone: () => void }) {
           toast.success(t("onboardingWizard.deviceConnected"));
           setStep(3);
         } else {
-          const q = await apiGet<{ qr: string }>(
+          const q = await apiGet<{ qrImage: string }>(
             `/devices/${deviceId}/qr`
           ).catch(() => null);
-          if (q?.qr) setQr((prev) => (prev === q.qr ? prev : q.qr));
+          if (q?.qrImage) setQr((prev) => (prev === q.qrImage ? prev : q.qrImage));
         }
       } catch {
         /* abaikan, coba lagi di tick berikutnya */
@@ -323,9 +323,7 @@ export default function OnboardingWizard({ onDone }: { onDone: () => void }) {
               {!qrLoading && !qrError && qr && (
                 <>
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(
-                      qr
-                    )}`}
+                    src={qr}
                     alt={t("onboardingWizard.qrAlt")}
                     className="w-48 h-48 sm:w-56 sm:h-56 rounded-lg border border-border"
                   />

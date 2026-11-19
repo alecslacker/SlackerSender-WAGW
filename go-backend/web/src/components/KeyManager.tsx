@@ -298,8 +298,8 @@ export function KeyManager({ onUseKey }: { onUseKey?: (key: string) => void }) {
                         onClick={() => toggleScope(s.Value)}
                         className={`text-xs px-2.5 py-1.5 rounded-full border transition-colors ${
                           active
-                            ? "bg-[#243370] text-white border-[#243370]"
-                            : "border-border text-muted-foreground hover:border-[#243370]/50"
+                            ? "bg-[#15803d] text-white border-[#15803d]"
+                            : "border-border text-muted-foreground hover:border-[#15803d]/50"
                         }`}
                       >
                         {s.Label}

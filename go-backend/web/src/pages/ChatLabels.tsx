@@ -24,7 +24,7 @@ interface Assignment {
 }
 
 const LABEL_COLORS = [
-  "#243370", "#0ea5e9", "#8b5cf6", "#ec4899",
+  "#15803d", "#22c55e", "#0d9488", "#65a30d",
   "#f59e0b", "#10b981", "#ef4444", "#6b7280",
 ];
 
@@ -234,7 +234,7 @@ export default function ChatLabels({ embedded = false }: { embedded?: boolean })
                       <td className="py-3 px-4 font-mono text-[13px]">{a.chatJid}</td>
                       <td className="py-3 px-4">
                         {a.label ? (
-                          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium text-white" style={{ backgroundColor: a.label.color || "#243370" }}>
+                          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium text-white" style={{ backgroundColor: a.label.color || "#15803d" }}>
                             {a.label.name}
                           </span>
                         ) : <span className="text-muted-foreground text-xs">-</span>}

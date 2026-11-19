@@ -30,7 +30,7 @@ import { useLocation } from "wouter";
 import OnboardingWizard, { isOnboardingDone } from "@/components/OnboardingWizard";
 import GraceBanner from "@/components/GraceBanner";
 
-const NAVY = "#243370";
+const NAVY = "#15803d";
 
 interface Device {
   id: number;
@@ -143,7 +143,7 @@ function Toggle({
       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
         checked
           ? "bg-primary border-primary"
-          : "bg-gray-300 border-gray-300 dark:bg-muted dark:border-muted"
+          : "bg-muted border-border dark:bg-muted dark:border-muted"
       }`}
     >
       <span
@@ -337,10 +337,10 @@ export default function Dashboard() {
           setQrDevice(null);
           loadDevices();
         } else {
-          const q = await apiGet<{ qr: string }>(
+          const q = await apiGet<{ qrImage: string }>(
             `/devices/${qrDevice.id}/qr`
           ).catch(() => null);
-          if (q && q.qr) setQrCode((prev) => (q.qr !== prev ? q.qr : prev));
+          if (q && q.qrImage) setQrCode((prev) => (q.qrImage !== prev ? q.qrImage : prev));
         }
       } catch {
         /* abaikan, coba lagi di tick berikutnya */
@@ -382,10 +382,10 @@ export default function Dashboard() {
     try {
       await apiPost(`/devices/${d.id}/connect`);
       await new Promise((r) => setTimeout(r, 1500));
-      const q = await apiGet<{ qr: string }>(`/devices/${d.id}/qr`).catch(
+      const q = await apiGet<{ qrImage: string }>(`/devices/${d.id}/qr`).catch(
         () => null
       );
-      if (q && q.qr) setQrCode(q.qr);
+      if (q && q.qrImage) setQrCode(q.qrImage);
     } catch (e) {
       setQrError(e instanceof Error ? e.message : t("dashboard.connectFail"));
     } finally {
@@ -629,7 +629,7 @@ export default function Dashboard() {
           </p>
         </StatCard>
 
-        <StatCard label={t("dashboard.blastBulk")} icon={Megaphone} tile="#1e2a5c" loading={loading}>
+        <StatCard label={t("dashboard.blastBulk")} icon={Megaphone} tile="#0b3d1f" loading={loading}>
           <div className="flex flex-wrap gap-1.5 mt-1.5">
             <span className="inline-flex items-center rounded-full bg-amber-500/15 text-amber-700 text-[11px] font-semibold px-2 py-0.5">
               {bulkStats.wait} {t("dashboard.wait")}
@@ -649,12 +649,12 @@ export default function Dashboard() {
           </p>
         </StatCard>
 
-        <StatCard label={t("dashboard.subscription")} icon={Star} tile="#2e4186" loading={loading}>
+        <StatCard label={t("dashboard.subscription")} icon={Star} tile="#15803d" loading={loading}>
           <p className="text-3xl font-bold text-foreground tracking-tight">
             {subPlanName}
             {/* Fitur 7: label Trial */}
             {isTrialSub && (
-              <span className="ml-2 align-middle inline-flex items-center rounded-full bg-[#243370]/10 text-[#243370] dark:text-blue-400 text-[11px] font-semibold px-2 py-0.5">
+              <span className="ml-2 align-middle inline-flex items-center rounded-full bg-[#15803d]/10 text-[#15803d] dark:text-[#4ade80] text-[11px] font-semibold px-2 py-0.5">
                 {t("dashboard.trial")}
               </span>
             )}
@@ -684,7 +684,7 @@ export default function Dashboard() {
             {subAction && (
               <button
                 onClick={() => navigate(subAction.href)}
-                className="text-[11px] font-semibold text-[#243370] dark:text-blue-400 hover:underline shrink-0"
+                className="text-[11px] font-semibold text-[#15803d] dark:text-[#4ade80] hover:underline shrink-0"
               >
                 {subAction.label}
               </button>
@@ -696,7 +696,7 @@ export default function Dashboard() {
               <div
                 className={cn(
                   "h-full",
-                  quota.warning ? "bg-amber-500" : "bg-[#243370] dark:bg-blue-400"
+                  quota.warning ? "bg-amber-500" : "bg-[#15803d] dark:bg-[#15803d]"
                 )}
                 style={{
                   width: `${quota.usedThisMonth > 0 ? Math.max(2, Math.min(100, quota.percentUsed)) : 0}%`,
@@ -706,7 +706,7 @@ export default function Dashboard() {
           )}
         </StatCard>
 
-        <StatCard label={t("dashboard.messagesSent")} icon={MessageSquare} tile="#1a2a5e" loading={loading}>
+        <StatCard label={t("dashboard.messagesSent")} icon={MessageSquare} tile="#0b3d1f" loading={loading}>
           <p className="text-3xl font-bold text-foreground tracking-tight">
             {messagesTotal !== null ? messagesTotal.toLocaleString(locale) : "-"}
           </p>
@@ -1122,9 +1122,7 @@ export default function Dashboard() {
               {!qrLoading && !qrError && qrCode && (
                 <>
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(
-                      qrCode
-                    )}`}
+                    src={qrCode}
                     alt={t("dashboard.qrAlt")}
                     className="w-60 h-60 rounded-lg border border-border"
                   />

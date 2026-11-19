@@ -8,11 +8,11 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * DESIGN SYSTEM: Navy brand (#243370), no gradients
- * - Light mode: white surfaces, navy primary actions
- * - Dark mode: deep navy surfaces
- * - Pill buttons with soft tints (MPWA-style): navy / green / amber / red
- * - Clean typography (Inter)
+ * DESIGN SYSTEM: SlackerSender — Terminal (hitam + hijau terminal)
+ * - Dark mode (default): hitam pekat, teks hijau terminal
+ * - Light mode: putih kehijauan, teks hijau sangat gelap
+ * - Primary hijau #22c55e dengan teks hitam di atasnya (terminal style)
+ * - Tanpa gradient
  */
 
 @theme inline {
@@ -40,6 +40,8 @@
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  /* Font display ala terminal CRT untuk judul besar (hero, splash). */
+  --font-display: 'VT323', 'JetBrains Mono', monospace;
 
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -47,58 +49,58 @@
   --radius-xl: 12px;
 }
 
-/* ── LIGHT MODE ─────────────────────────────────────────────────────────────── */
+/* ── LIGHT MODE: putih kehijauan, teks hijau gelap ──────────────────────────── */
 :root {
-  --bg: #ffffff;
-  --fg: #0a0a0a;
+  --bg: #f4faf4;
+  --fg: #0b3d1f;
   --card-bg: #ffffff;
-  --card-fg: #0a0a0a;
-  --border-color: #e5e5e5;
-  --input-color: #e5e5e5;
-  --ring-color: #0a0a0a;
+  --card-fg: #0b3d1f;
+  --border-color: #d7e8da;
+  --input-color: #d7e8da;
+  --ring-color: #0b3d1f;
 
-  --primary-color: #243370;
+  --primary-color: #15803d;
   --primary-fg: #ffffff;
-  --secondary-color: #f5f5f5;
-  --secondary-fg: #0a0a0a;
-  --muted-color: #f5f5f5;
-  --muted-fg: #737373;
-  --accent-color: #f5f5f5;
-  --accent-fg: #0a0a0a;
+  --secondary-color: #e6f2e8;
+  --secondary-fg: #0b3d1f;
+  --muted-color: #e6f2e8;
+  --muted-fg: #4b7a58;
+  --accent-color: #e6f2e8;
+  --accent-fg: #0b3d1f;
   --destructive-color: #dc2626;
   --destructive-fg: #ffffff;
-  --success-color: #16a34a;
+  --success-color: #15803d;
 
-  --sidebar-color: #0a0a0a;
-  --sidebar-fg: #fafafa;
-  --sidebar-border-color: #262626;
+  --sidebar-color: #061006;
+  --sidebar-fg: #4ade80;
+  --sidebar-border-color: #122618;
 }
 
-/* ── DARK MODE: navy ────────────────────────────────────────────────────────── */
+/* ── DARK MODE: hitam terminal + hijau ─────────────────────────────────────── */
 .dark {
-  --bg: #0a1030;
-  --fg: #eef1ff;
-  --card-bg: #121a42;
-  --card-fg: #eef1ff;
-  --border-color: #2f3a7d;
-  --input-color: #2f3a7d;
-  --ring-color: #8fa3f5;
+  --bg: #050805;
+  --fg: #4ade80;
+  --card-bg: #0a120b;
+  --card-fg: #4ade80;
+  --border-color: #16351e;
+  --input-color: #16351e;
+  --ring-color: #22ff88;
 
-  --primary-color: #4c63d2;
-  --primary-fg: #ffffff;
-  --secondary-color: #1a2350;
-  --secondary-fg: #eef1ff;
-  --muted-color: #1a2350;
-  --muted-fg: #9aa5d6;
-  --accent-color: #1a2350;
-  --accent-fg: #eef1ff;
-  --destructive-color: #f87171;
+  --primary-color: #22c55e;
+  --primary-fg: #03140a;
+  --secondary-color: #0d1c10;
+  --secondary-fg: #4ade80;
+  --muted-color: #0d1c10;
+  --muted-fg: #2fb35d;
+  --accent-color: #0d1c10;
+  --accent-fg: #4ade80;
+  --destructive-color: #ef4444;
   --destructive-fg: #ffffff;
-  --success-color: #4ade80;
+  --success-color: #22c55e;
 
-  --sidebar-color: #080d28;
-  --sidebar-fg: #eef1ff;
-  --sidebar-border-color: #232c5e;
+  --sidebar-color: #030503;
+  --sidebar-fg: #4ade80;
+  --sidebar-border-color: #122618;
 }
 
 @layer base {
@@ -123,37 +125,37 @@
   }
 }
 
-/* ── KUMO UI: brand navy WaGataway di atas token Kumo ─────────────────────────
+/* ── KUMO UI: brand hijau SlackerSender di atas token Kumo ────────────────────
  * Kumo membaca tema dari atribut data-theme="kumo" + data-mode="light|dark"
- * pada <html> (diatur oleh ThemeProvider). Di sini brand Cloudflare (biru)
- * diganti navy #243370 agar identitas WaGataway tetap terjaga. */
+ * pada <html> (diatur oleh ThemeProvider). Brand Cloudflare (biru) diganti
+ * hijau terminal agar identitas SlackerSender tetap terjaga. */
 
 [data-theme="kumo"] {
-  --color-kumo-brand: #243370;
-  --color-kumo-brand-hover: #1b2a5e;
-  --text-color-kumo-brand: #243370;
+  --color-kumo-brand: #15803d;
+  --color-kumo-brand-hover: #166534;
+  --text-color-kumo-brand: #166534;
 }
 
-/* Dark mode: permukaan navy mengikuti tema gelap aplikasi */
+/* Dark mode: permukaan hitam mengikuti tema gelap aplikasi */
 [data-theme="kumo"][data-mode="dark"],
 [data-mode="dark"] [data-theme="kumo"] {
-  --color-kumo-brand: #4c63d2;
-  --color-kumo-brand-hover: #5d74dd;
-  --text-color-kumo-brand: #aab6f5;
-  --color-kumo-canvas: #0a1030;
-  --color-kumo-elevated: #121a42;
-  --color-kumo-base: #121a42;
-  --color-kumo-tint: #1a2350;
-  --color-kumo-recessed: #0d1435;
-  --color-kumo-line: #27326a;
-  --color-kumo-hairline: #232c5e;
-  --color-kumo-control: #121a42;
-  --color-kumo-interact: #27326a;
-  --color-kumo-fill: #1a2350;
-  --text-color-kumo-default: #eef1ff;
-  --text-color-kumo-strong: #ffffff;
-  --text-color-kumo-subtle: #9aa5d6;
-  --text-color-kumo-placeholder: #6b77ab;
+  --color-kumo-brand: #22c55e;
+  --color-kumo-brand-hover: #34d399;
+  --text-color-kumo-brand: #86efac;
+  --color-kumo-canvas: #050805;
+  --color-kumo-elevated: #0a120b;
+  --color-kumo-base: #0a120b;
+  --color-kumo-tint: #0d1c10;
+  --color-kumo-recessed: #071007;
+  --color-kumo-line: #16351e;
+  --color-kumo-hairline: #122618;
+  --color-kumo-control: #0a120b;
+  --color-kumo-interact: #1c4326;
+  --color-kumo-fill: #0d1c10;
+  --text-color-kumo-default: #4ade80;
+  --text-color-kumo-strong: #86efac;
+  --text-color-kumo-subtle: #2fb35d;
+  --text-color-kumo-placeholder: #1f6b36;
 }
 
 /* ── Animasi page transition WaGataway ─────────────────────────────── */
@@ -183,6 +185,79 @@
 .animate-bounce-dot { animation: bounce-dot 1.2s ease-in-out infinite; }
 .animate-pulse-soft { animation: pulse-soft 1.6s ease-in-out infinite; }
 .animate-fade-slide-in { animation: fade-slide-in 0.25s ease-out; }
+
+/* ── Efek glitch terminal (judul landing) ─────────────────────────────────────
+ * Dua layer copy dari data-text via ::before/::after, digeser + di-clip
+ * periodik: hijau terang (kiri) dan merah terminal (kanan). Sikelatan
+ * pendek lalu diam — bukan bergetar terus, biar tetap elegan. */
+.glitch-text {
+  position: relative;
+  display: inline-block;
+  text-shadow: 0 0 24px rgba(74, 222, 128, 0.35);
+}
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, clip-path;
+}
+.glitch-text::before {
+  color: #22ff88;
+  animation: glitch-shift-a 3.2s infinite steps(1);
+}
+.glitch-text::after {
+  color: #ff4d4d;
+  animation: glitch-shift-b 3.2s infinite steps(1);
+}
+@keyframes glitch-shift-a {
+  0%, 88%, 100% { opacity: 0; transform: none; clip-path: inset(0 0 0 0); }
+  89% { opacity: 0.85; transform: translate(-4px, 1px); clip-path: inset(12% 0 58% 0); }
+  91% { opacity: 0.85; transform: translate(3px, -1px); clip-path: inset(52% 0 22% 0); }
+  93% { opacity: 0.85; transform: translate(-2px, 0); clip-path: inset(78% 0 4% 0); }
+  95% { opacity: 0; transform: none; }
+}
+@keyframes glitch-shift-b {
+  0%, 88%, 100% { opacity: 0; transform: none; clip-path: inset(0 0 0 0); }
+  89% { opacity: 0.7; transform: translate(4px, -1px); clip-path: inset(38% 0 40% 0); }
+  92% { opacity: 0.7; transform: translate(-3px, 1px); clip-path: inset(6% 0 76% 0); }
+  94% { opacity: 0; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glitch-text::before,
+  .glitch-text::after { animation: none; opacity: 0; }
+}
+
+/* ── Latar terminal hero (grid + scanline + sweep) ──────────────────────────── */
+.terminal-grid {
+  background-image:
+    linear-gradient(rgba(74, 222, 128, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 222, 128, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+  /* Fokus di area judul, memudar ke tepi */
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 42%, black 30%, transparent 78%);
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 42%, black 30%, transparent 78%);
+}
+.terminal-scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(74, 222, 128, 0.028) 0 1px,
+    transparent 1px 4px
+  );
+}
+.terminal-sweep {
+  background: linear-gradient(180deg, transparent, rgba(74, 222, 128, 0.05), transparent);
+  animation: terminal-sweep 9s linear infinite;
+}
+@keyframes terminal-sweep {
+  from { transform: translateY(-12rem); }
+  to { transform: translateY(120vh); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .terminal-sweep { animation: none; }
+}
 
 /* Scroll-reveal untuk landing (prerender-friendly): tanpa JS konten terlihat;
  * dengan JS, .reveal-js menyembunyikan dulu sampai .revealed ditambahkan. */

@@ -252,7 +252,7 @@ export function DateTimePicker({
                   className={cn(
                     "aspect-square rounded-md text-xs transition-colors",
                     isSelectedDay(day)
-                      ? "bg-[#243370] dark:bg-[#4c63d2] text-white font-semibold"
+                      ? "bg-[#15803d] dark:bg-[#15803d] text-white font-semibold"
                       : isPastDay(day)
                         ? "text-muted-foreground/30 cursor-not-allowed"
                         : "text-foreground hover:bg-secondary"
@@ -342,7 +342,7 @@ export function DateTimePicker({
                 onChange(showTime ? toDT(draft) : toDate(draft));
                 setOpen(false);
               }}
-              className="h-8 px-4 rounded-full bg-[#243370] dark:bg-[#4c63d2] text-white text-xs font-semibold"
+              className="h-8 px-4 rounded-full bg-[#15803d] dark:bg-[#15803d] text-white text-xs font-semibold"
             >
               {t("schedule.chooseDate")}
             </button>

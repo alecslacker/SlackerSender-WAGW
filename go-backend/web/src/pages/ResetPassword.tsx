@@ -73,7 +73,7 @@ export default function ResetPassword() {
             {t("resetPassword.successMessage")}
           </p>
           <Link href="/login">
-            <Button className="mt-6 bg-[#243370] hover:bg-[#1c2a5c] text-white">
+            <Button className="mt-6 bg-[#15803d] hover:bg-[#0d1c10] text-white">
               {t("resetPassword.loginNow")}
             </Button>
           </Link>
@@ -119,7 +119,7 @@ export default function ResetPassword() {
 
           <Button
             type="submit"
-            className="w-full bg-[#243370] hover:bg-[#1c2a5c] text-white h-11 text-[15px] font-semibold"
+            className="w-full bg-[#15803d] hover:bg-[#0d1c10] text-white h-11 text-[15px] font-semibold"
             disabled={loading}
           >
             {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

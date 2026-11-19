@@ -198,7 +198,7 @@ function BubbleTail({ out }: { out: boolean }) {
       <path d="M0 0 L8 0 L0 13 Z" />
     </svg>
   ) : (
-    <svg viewBox="0 0 8 13" className="absolute -left-[7px] top-0 w-2 h-[13px] fill-white dark:fill-[#1f2c34]">
+    <svg viewBox="0 0 8 13" className="absolute -left-[7px] top-0 w-2 h-[13px] fill-white dark:fill-[#0d1c10]">
       <path d="M8 0 L0 0 L8 13 Z" />
     </svg>
   );
@@ -209,7 +209,7 @@ function Ticks({ read }: { read: boolean }) {
   return (
     <svg
       viewBox="0 0 18 14"
-      className={cn("w-4 h-3.5 shrink-0", read ? "text-[#53bdeb]" : "text-[#8696a0]")}
+      className={cn("w-4 h-3.5 shrink-0", read ? "text-[#4ade80]" : "text-[#8696a0]")}
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
@@ -331,7 +331,7 @@ function ChatAvatar({
     <div
       className={cn(
         size,
-        "rounded-full bg-[#243370] dark:bg-[#4c63d2] text-white flex items-center justify-center font-semibold shrink-0",
+        "rounded-full bg-[#15803d] dark:bg-[#15803d] text-white flex items-center justify-center font-semibold shrink-0",
         textSize
       )}
     >
@@ -1458,7 +1458,7 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
         activePhone ? "hidden md:flex md:w-80" : "flex w-full md:w-80"
       )}>
         {/* Header akun ala WA: titik online + nama device + ganti device */}
-        <div className="relative bg-[#f0f2f5] dark:bg-[#1f2c34] px-3 pt-2.5" ref={deviceMenuRef}>
+        <div className="relative bg-[#f0f2f5] dark:bg-[#0d1c10] px-3 pt-2.5" ref={deviceMenuRef}>
           <button
             onClick={() => setDeviceMenuOpen((v) => !v)}
             className="w-full flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-left"
@@ -1516,12 +1516,12 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
           )}
         </div>
         {/* Search */}
-        <div className="px-3 py-2 bg-[#f0f2f5] dark:bg-[#1f2c34] space-y-2">
+        <div className="px-3 py-2 bg-[#f0f2f5] dark:bg-[#0d1c10] space-y-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#667781] dark:text-[#8696a0]" />
             <input
               placeholder={t("liveChat.searchPlaceholder")}
-              className="w-full h-8 pl-10 pr-3 rounded-lg bg-white dark:bg-[#2a3942] text-[13px] text-[#111b21] dark:text-[#e9edef] placeholder:text-[#667781] dark:placeholder:text-[#8696a0] focus:outline-none"
+              className="w-full h-8 pl-10 pr-3 rounded-lg bg-white dark:bg-[#11240f] text-[13px] text-[#111b21] dark:text-[#e9edef] placeholder:text-[#667781] dark:placeholder:text-[#8696a0] focus:outline-none"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -1565,7 +1565,7 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
             <select
               value={assigneeFilter}
               onChange={(e) => setAssigneeFilter(e.target.value)}
-              className="h-6 px-1.5 rounded-full bg-white dark:bg-[#2a3942] text-[10px] font-medium text-[#667781] dark:text-[#8696a0] focus:outline-none max-w-[140px]"
+              className="h-6 px-1.5 rounded-full bg-white dark:bg-[#11240f] text-[10px] font-medium text-[#667781] dark:text-[#8696a0] focus:outline-none max-w-[140px]"
               title={t("liveChat.filterAssignee")}
             >
               <option value="all">{t("liveChat.filterAllAssignees")}</option>
@@ -1584,7 +1584,7 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
             <select
               value={labelFilter}
               onChange={(e) => setLabelFilter(e.target.value)}
-              className="h-6 px-1.5 rounded-full bg-white dark:bg-[#2a3942] text-[10px] font-medium text-[#667781] dark:text-[#8696a0] focus:outline-none max-w-[140px]"
+              className="h-6 px-1.5 rounded-full bg-white dark:bg-[#11240f] text-[10px] font-medium text-[#667781] dark:text-[#8696a0] focus:outline-none max-w-[140px]"
               title={t("liveChat.filterLabel")}
             >
               <option value="all">{t("liveChat.filterAllLabels")}</option>
@@ -1616,7 +1616,7 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors",
                   activePhone === convo.phone
-                    ? "bg-[#f0f2f5] dark:bg-[#2a3942]"
+                    ? "bg-[#f0f2f5] dark:bg-[#11240f]"
                     : "hover:bg-[#f5f6f6] dark:hover:bg-[#1f2c34]"
                 )}
               >
@@ -1688,7 +1688,7 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
         {activePhone ? (
           <>
             {/* Chat Header */}
-            <div className="min-h-[60px] flex items-center justify-between gap-2 pl-3 pr-2 py-1.5 bg-[#f0f2f5] dark:bg-[#1f2c34]">
+            <div className="min-h-[60px] flex items-center justify-between gap-2 pl-3 pr-2 py-1.5 bg-[#f0f2f5] dark:bg-[#0d1c10]">
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <Button
                   variant="ghost"
@@ -2445,7 +2445,7 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
                     "px-2.5 pt-1.5 pb-1 text-[13.5px] leading-snug shadow-[0_1px_1px_rgba(0,0,0,0.12)]",
                     out
                       ? "bg-[#d9fdd3] dark:bg-[#005c4b] text-[#111b21] dark:text-[#e9edef] rounded-[7.5px] rounded-tr-none"
-                      : "bg-white dark:bg-[#1f2c34] text-[#111b21] dark:text-[#e9edef] rounded-[7.5px] rounded-tl-none"
+                      : "bg-white dark:bg-[#0d1c10] text-[#111b21] dark:text-[#e9edef] rounded-[7.5px] rounded-tl-none"
                   );
                   const timeCls = cn(
                     "float-right flex items-center gap-1 ml-2 mt-2.5 text-[10px] leading-none",
@@ -2461,7 +2461,7 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
                     <>
                       {showChip && (
                         <div key={`chip-${msg.id}`} className="flex justify-center py-1">
-                          <span className="px-3 py-1 rounded-md bg-white/95 dark:bg-[#1f2c34] shadow-sm text-[11px] font-medium uppercase text-[#54656f] dark:text-[#aebac1]">
+                          <span className="px-3 py-1 rounded-md bg-white/95 dark:bg-[#0d1c10] shadow-sm text-[11px] font-medium uppercase text-[#54656f] dark:text-[#aebac1]">
                             {dayChipLabel(
                               msg.createdAt,
                               t("liveChat.todayLabel"),
@@ -2495,7 +2495,7 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
                           {/* Toolbar aksi: muncul saat hover / tap bubble */}
                           {showToolbar && !showReactions && (
                             <div
-                              className="absolute -top-4 z-10 flex items-center gap-0.5 rounded-full bg-white dark:bg-[#1f2c34] shadow-lg border border-black/10 dark:border-white/10 px-1 py-0.5"
+                              className="absolute -top-4 z-10 flex items-center gap-0.5 rounded-full bg-white dark:bg-[#0d1c10] shadow-lg border border-black/10 dark:border-white/10 px-1 py-0.5"
                               style={out ? { right: 0 } : { left: 0 }}
                               onClick={(e) => e.stopPropagation()}
                             >
@@ -2541,7 +2541,7 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
                           {/* Popover reaksi cepat */}
                           {showReactions && (
                             <div
-                              className="absolute -top-4 z-10 flex items-center gap-1 rounded-full bg-white dark:bg-[#1f2c34] shadow-lg border border-black/10 dark:border-white/10 px-2 py-1"
+                              className="absolute -top-4 z-10 flex items-center gap-1 rounded-full bg-white dark:bg-[#0d1c10] shadow-lg border border-black/10 dark:border-white/10 px-2 py-1"
                               style={out ? { right: 0 } : { left: 0 }}
                               onClick={(e) => e.stopPropagation()}
                             >
@@ -2655,7 +2655,7 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
                               {grouped.map((g) => (
                                 <span
                                   key={g.emoji}
-                                  className="inline-flex items-center gap-0.5 rounded-full bg-white dark:bg-[#1f2c34] border border-black/10 dark:border-white/10 px-1.5 py-0.5 text-[11px] shadow-sm"
+                                  className="inline-flex items-center gap-0.5 rounded-full bg-white dark:bg-[#0d1c10] border border-black/10 dark:border-white/10 px-1.5 py-0.5 text-[11px] shadow-sm"
                                 >
                                   {g.emoji}
                                   {g.count > 1 && (
@@ -2676,10 +2676,10 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
             </div>
 
             {/* Input Area */}
-            <div className="px-3 py-2 bg-[#f0f2f5] dark:bg-[#1f2c34] relative">
+            <div className="px-3 py-2 bg-[#f0f2f5] dark:bg-[#0d1c10] relative">
               {/* Preview balasan */}
               {replyTo && (
-                <div className="mb-2 rounded-md bg-white dark:bg-[#2a3942] border-l-4 border-[#00a884] px-3 py-1.5 flex items-start gap-2">
+                <div className="mb-2 rounded-md bg-white dark:bg-[#11240f] border-l-4 border-[#00a884] px-3 py-1.5 flex items-start gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-[11px] font-semibold text-[#00a884] dark:text-[#06cf9c] truncate">
                       {replyTo.name}
@@ -2699,7 +2699,7 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
               )}
               {/* Preview media sebelum dikirim */}
               {mediaFile && (
-                <div className="mb-2 rounded-lg bg-white dark:bg-[#2a3942] p-2 flex items-center gap-3">
+                <div className="mb-2 rounded-lg bg-white dark:bg-[#11240f] p-2 flex items-center gap-3">
                   {mediaPreviewUrl ? (
                     <img
                       src={mediaPreviewUrl}
@@ -2881,7 +2881,7 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (mediaFile ? sendMedia() : handleSend())}
-                    className="flex-1 h-10 px-4 rounded-full bg-white dark:bg-[#2a3942] text-[14px] text-[#111b21] dark:text-[#e9edef] placeholder:text-[#667781] dark:placeholder:text-[#8696a0] focus:outline-none min-w-0"
+                    className="flex-1 h-10 px-4 rounded-full bg-white dark:bg-[#11240f] text-[14px] text-[#111b21] dark:text-[#e9edef] placeholder:text-[#667781] dark:placeholder:text-[#8696a0] focus:outline-none min-w-0"
                     disabled={loading || uploading}
                   />
                   {mediaFile ? (
@@ -2938,7 +2938,7 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
               <div className="mx-auto w-20 h-20 rounded-full bg-[#25d366]/15 dark:bg-[#00a884]/15 inline-flex items-center justify-center mb-4">
                 <MessageCircle className="w-10 h-10 text-[#00a884]" />
               </div>
-              <p className="text-xl font-light text-[#111b21] dark:text-[#e9edef]">WaGataway Chat</p>
+              <p className="text-xl font-light text-[#111b21] dark:text-[#e9edef]">SlackerSender Chat</p>
               <p className="text-[13px] text-[#667781] dark:text-[#8696a0] mt-2">
                 {t("liveChat.emptyHint")}
               </p>
@@ -2954,7 +2954,7 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
           onClick={() => setForwardMsg(null)}
         >
           <div
-            className="w-full max-w-sm rounded-xl bg-white dark:bg-[#1f2c34] shadow-2xl overflow-hidden"
+            className="w-full max-w-sm rounded-xl bg-white dark:bg-[#0d1c10] shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-black/10 dark:border-white/10">

@@ -36,7 +36,7 @@ interface Contact {
   phone: string;
 }
 
-const emptyForm = { name: "", description: "", color: "#6366f1" };
+const emptyForm = { name: "", description: "", color: "#15803d" };
 
 function Modal({
   title,
@@ -165,7 +165,7 @@ export default function ContactGroups({ embedded = false }: { embedded?: boolean
     setForm({
       name: g.name || "",
       description: g.description || "",
-      color: g.color || "#6366f1",
+      color: g.color || "#15803d",
     });
     setShowForm(true);
   };
@@ -324,7 +324,7 @@ export default function ContactGroups({ embedded = false }: { embedded?: boolean
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
                       className="w-4 h-4 rounded-full shrink-0"
-                      style={{ backgroundColor: g.color || "#6366f1" }}
+                      style={{ backgroundColor: g.color || "#15803d" }}
                     />
                     <CardTitle className="text-base truncate">{g.name}</CardTitle>
                   </div>
@@ -421,7 +421,7 @@ export default function ContactGroups({ embedded = false }: { embedded?: boolean
                   value={form.color}
                   onChange={(e) => setForm({ ...form, color: e.target.value })}
                   className="max-w-[140px]"
-                  placeholder="#6366f1"
+                  placeholder="#15803d"
                 />
               </div>
             </div>

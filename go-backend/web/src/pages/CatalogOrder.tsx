@@ -70,9 +70,9 @@ function statusBadgeClass(status: string) {
     case "pending":
       return "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300";
     case "confirmed":
-      return "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300";
+      return "bg-[#0d1c10] text-[#4ade80] dark:bg-[#0d1c10]/40 dark:text-[#4ade80]";
     case "shipped":
-      return "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300";
+      return "bg-[#0d1c10] text-[#4ade80] dark:bg-[#0d1c10]/40 dark:text-[#4ade80]";
     case "completed":
       return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300";
     case "cancelled":
@@ -135,7 +135,7 @@ function Switch({
       onClick={onChange}
       className={cn(
         "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-        checked ? "bg-[#243370]" : "bg-muted"
+        checked ? "bg-[#15803d]" : "bg-muted"
       )}
     >
       <span
@@ -452,7 +452,7 @@ export default function CatalogOrder() {
                 className={cn(
                   "rounded-full border px-3 py-1 text-xs font-medium",
                   statusFilter === s
-                    ? "bg-[#243370] text-white border-[#243370]"
+                    ? "bg-[#15803d] text-white border-[#15803d]"
                     : "border-border text-muted-foreground hover:text-foreground"
                 )}
               >

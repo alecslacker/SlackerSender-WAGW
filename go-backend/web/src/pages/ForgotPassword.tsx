@@ -35,8 +35,8 @@ export default function ForgotPassword() {
     >
       {sent ? (
         <div className="text-center py-4">
-          <span className="w-14 h-14 rounded-full bg-[#243370]/10 dark:bg-[#243370]/10 flex items-center justify-center mx-auto">
-            <MailCheck className="w-7 h-7 text-[#243370] dark:text-blue-400" />
+          <span className="w-14 h-14 rounded-full bg-[#15803d]/10 dark:bg-[#15803d]/10 flex items-center justify-center mx-auto">
+            <MailCheck className="w-7 h-7 text-[#15803d] dark:text-[#4ade80]" />
           </span>
           <h2 className="font-semibold text-foreground mt-4">
             {t("forgotPassword.checkEmail")}
@@ -84,7 +84,7 @@ export default function ForgotPassword() {
 
           <Button
             type="submit"
-            className="w-full bg-[#243370] hover:bg-[#1c2a5c] text-white h-11 text-[15px] font-semibold"
+            className="w-full bg-[#15803d] hover:bg-[#0d1c10] text-white h-11 text-[15px] font-semibold"
             disabled={loading}
           >
             {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

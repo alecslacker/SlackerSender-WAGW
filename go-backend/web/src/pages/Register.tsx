@@ -140,7 +140,7 @@ export default function Register() {
 
         <Button
           type="submit"
-          className="w-full bg-[#243370] hover:bg-[#1c2a5c] text-white h-11 text-[15px] font-semibold"
+          className="w-full bg-[#15803d] hover:bg-[#0d1c10] text-white h-11 text-[15px] font-semibold"
           disabled={loading}
         >
           {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -149,7 +149,7 @@ export default function Register() {
 
         {/* Fitur 7: info trial otomatis */}
         <p className="flex items-center justify-center gap-1.5 text-[12px] text-muted-foreground">
-          <Sparkles className="w-3.5 h-3.5 text-[#243370] dark:text-blue-400 shrink-0" />
+          <Sparkles className="w-3.5 h-3.5 text-[#15803d] dark:text-[#4ade80] shrink-0" />
           {t("register.trialInfo")}
         </p>
 
@@ -162,7 +162,7 @@ export default function Register() {
         {t("register.haveAccount")}{" "}
         <Link
           href="/login"
-          className="font-semibold text-[#243370] dark:text-blue-400 hover:underline"
+          className="font-semibold text-[#15803d] dark:text-[#4ade80] hover:underline"
         >
           {t("register.loginLink")}
         </Link>

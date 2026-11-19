@@ -250,7 +250,7 @@ export default function AutoReply({ embedded = false }: { embedded?: boolean }) 
                       onClick={() => toggle(rule)}
                       className={cn(
                         "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-                        rule.isActive ? "bg-[#243370]" : "bg-muted"
+                        rule.isActive ? "bg-[#15803d]" : "bg-muted"
                       )}
                     >
                       <span

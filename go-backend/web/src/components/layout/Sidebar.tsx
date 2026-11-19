@@ -7,10 +7,10 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutGrid,
-  Send,
   Users,
   MessagesSquare,
   Clock,
+  Send,
   Link2,
   BarChart3,
   Settings,
@@ -233,7 +233,7 @@ function ActiveDeviceSelector({ collapsed }: { collapsed: boolean }) {
 
   return (
     <div className="px-4 pb-3">
-      <p className="px-1 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+      <p className="px-1 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {t("nav.activeDevice")}
       </p>
       <div className="relative">
@@ -251,7 +251,7 @@ function ActiveDeviceSelector({ collapsed }: { collapsed: boolean }) {
           ariaLabel={t("nav.selectDeviceAria")}
           className="[&_button]:rounded-full [&_button]:pl-9"
         />
-        <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+        <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
       </div>
     </div>
   );
@@ -264,16 +264,16 @@ function UserCard({ collapsed }: { collapsed: boolean }) {
   if (collapsed || !user) return null;
   const initial = (user.name || user.email || "?").charAt(0).toUpperCase();
   return (
-    <div className="px-4 py-3 border-t border-slate-200 dark:border-white/10">
+    <div className="px-4 py-3 border-t border-border dark:border-white/10">
       <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#243370] text-base font-bold text-white">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#15803d] text-base font-bold text-white">
           {initial}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-slate-900 dark:text-white">
+          <span className="block truncate text-sm font-semibold text-foreground dark:text-white">
             {user.name || user.email}
           </span>
-          <span className="block truncate text-xs text-slate-400 dark:text-slate-500 capitalize">
+          <span className="block truncate text-xs text-muted-foreground dark:text-muted-foreground capitalize">
             {user.plan || user.role || "Member"}
           </span>
         </span>
@@ -281,7 +281,7 @@ function UserCard({ collapsed }: { collapsed: boolean }) {
           onClick={logout}
           aria-label={t("nav.logout")}
           title={t("nav.logout")}
-          className="p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-white dark:hover:bg-white/10 transition-colors"
+          className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted dark:text-muted-foreground dark:hover:text-white dark:hover:bg-white/10 transition-colors"
         >
           <LogOut className="w-4 h-4" />
         </button>
@@ -297,15 +297,15 @@ function AdminUserCard({ collapsed }: { collapsed: boolean }) {
   const initial = (user.name || user.email || "?").charAt(0).toUpperCase();
   return (
     <div className="flex items-center gap-3 px-2 py-2">
-      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#243370] text-base font-bold text-white">
+      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#15803d] text-base font-bold text-white">
         {initial}
-        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-[#0a1030]" />
+        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-[#050805]" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold text-white">
           {user.name || user.email}
         </span>
-        <span className="block truncate text-xs text-slate-400 capitalize">
+        <span className="block truncate text-xs text-muted-foreground capitalize">
           {user.plan || user.role || "Member"}
         </span>
       </span>
@@ -436,8 +436,8 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
         className={cn(
           "relative flex items-center gap-3 px-4 py-2.5 text-sm transition-colors",
           isActive
-            ? "rounded-full bg-[#243370] text-white font-semibold shadow-[0_4px_14px_rgba(36,51,112,0.4)]"
-            : "rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/5",
+            ? "rounded-full bg-[#15803d] text-white font-semibold shadow-[0_4px_14px_rgba(36,51,112,0.4)]"
+            : "rounded-full text-muted-foreground hover:text-foreground hover:bg-muted dark:text-muted-foreground dark:hover:text-white dark:hover:bg-white/5",
           collapsed && "lg:justify-center lg:px-0"
         )}
         title={collapsed ? label : undefined}
@@ -470,8 +470,8 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
           // Gaya Nusa (sidebar gelap): tinggi 34px, radius 6px, teks 13.5px
           "relative flex h-[34px] items-center gap-2.5 px-3 text-[13.5px] font-medium transition-colors rounded-md",
           isActive
-            ? "bg-[#243370] text-white font-semibold"
-            : "text-slate-400 hover:text-white hover:bg-white/[0.07]",
+            ? "bg-[#15803d] text-white font-semibold"
+            : "text-muted-foreground hover:text-white hover:bg-white/[0.07]",
           collapsed && "lg:justify-center lg:px-0"
         )}
         title={collapsed ? label : undefined}
@@ -486,10 +486,10 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
     <aside
       className={cn(
         "flex h-screen h-dvh flex-col border-r transition-transform duration-200",
-        // Mode admin: sidebar GELAP navy #0a1030 di kedua tema (ala Nusa dark)
+        // Mode admin: sidebar GELAP navy #050805 di kedua tema (ala Nusa dark)
         isAdminArea
-          ? "admin-shell border-white/10 bg-[#0a1030] text-slate-300"
-          : "border-slate-200 bg-white text-slate-700 dark:border-white/10 dark:bg-[#0a1030] dark:text-slate-200",
+          ? "admin-shell border-white/10 bg-[#050805] text-muted-foreground"
+          : "border-border bg-white text-foreground dark:border-white/10 dark:bg-[#050805] dark:text-foreground",
         "fixed inset-y-0 left-0 z-50 w-72",
         mobileOpen ? "translate-x-0" : "-translate-x-full",
         "pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:pb-0",
@@ -503,27 +503,24 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
           "flex items-center gap-3 shrink-0 border-b",
           isAdminArea
             ? "h-[52px] px-[14px] border-white/10"
-            : "px-4 h-16 border-slate-200 dark:border-white/10"
+            : "px-4 h-16 border-border dark:border-white/10"
         )}
       >
-        <span
-          className={cn(
-            "flex shrink-0 items-center justify-center bg-[#243370]",
-            isAdminArea ? "h-8 w-8 rounded-md" : "h-10 w-10 rounded-full"
-          )}
-        >
-          <Send className={cn("text-white", isAdminArea ? "w-4 h-4" : "w-5 h-5")} />
-        </span>
+        <img
+          src="/slackercode-logo.png"
+          alt=""
+          className={cn("shrink-0", isAdminArea ? "h-8 w-8 rounded-md" : "h-10 w-10 rounded-full")}
+        />
         <span className={cn("min-w-0", collapsed && "lg:hidden")}>
           <span
             className={cn(
               "block font-bold tracking-tight leading-tight",
               isAdminArea
                 ? "text-[15.5px] text-white"
-                : "text-[17px] text-slate-900 dark:text-white"
+                : "text-[17px] text-foreground dark:text-white"
             )}
           >
-            WaGataway
+            SlackerSender
           </span>
         </span>
         <button
@@ -532,8 +529,8 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
           className={cn(
             "ml-auto p-2 -mr-2 rounded-full transition-colors lg:hidden",
             isAdminArea
-              ? "text-slate-400 hover:text-white hover:bg-white/10"
-              : "text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-white dark:hover:bg-white/10"
+              ? "text-muted-foreground hover:text-white hover:bg-white/10"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted dark:text-muted-foreground dark:hover:text-white dark:hover:bg-white/10"
           )}
         >
           <X className="w-5 h-5" />
@@ -559,7 +556,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
               className={cn("pb-1", collapsed && "lg:hidden")}
               onClick={(e) => e.stopPropagation()}
             >
-              <label className="flex h-8 items-center gap-2 rounded-md bg-white/[0.07] px-2.5 text-slate-400 focus-within:ring-2 focus-within:ring-white/25">
+              <label className="flex h-8 items-center gap-2 rounded-md bg-white/[0.07] px-2.5 text-muted-foreground focus-within:ring-2 focus-within:ring-white/25">
                 <Search className="w-[15px] h-[15px] shrink-0" />
                 <input
                   value={adminQuery}
@@ -570,7 +567,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
                   type="search"
                   placeholder={`${t("header.search")}…`}
                   aria-label={t("header.search")}
-                  className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-slate-500"
+                  className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-muted-foreground"
                 />
               </label>
             </div>
@@ -601,7 +598,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
                           e.stopPropagation();
                           toggleAdminSection(section.key);
                         }}
-                        className="w-full flex h-[26px] items-center justify-between px-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 hover:text-white transition-colors"
+                        className="w-full flex h-[26px] items-center justify-between px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground hover:text-white transition-colors"
                       >
                         <span>{t(`nav.${section.key}`)}</span>
                         <ChevronDown
@@ -625,7 +622,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
               <Link
                 href="/"
                 className={cn(
-                  "relative flex h-[34px] items-center gap-2.5 px-3 text-[13.5px] font-medium transition-colors rounded-md text-slate-400 hover:text-white hover:bg-white/[0.07]",
+                  "relative flex h-[34px] items-center gap-2.5 px-3 text-[13.5px] font-medium transition-colors rounded-md text-muted-foreground hover:text-white hover:bg-white/[0.07]",
                   collapsed && "lg:justify-center lg:px-0"
                 )}
                 title={collapsed ? t("nav.backToDashboard") : undefined}
@@ -659,7 +656,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
                   e.stopPropagation();
                   toggleSection(section.key);
                 }}
-                className="w-full flex items-center justify-between px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-muted-foreground dark:text-muted-foreground dark:hover:text-muted-foreground transition-colors"
               >
                 <span>{t(`nav.${section.key}`)}</span>
                 <ChevronDown
@@ -693,7 +690,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
         <button
           onClick={onToggle}
           aria-label={collapsed ? t("nav.openSidebar") : t("nav.closeSidebar")}
-          className="w-full flex items-center justify-center py-2 rounded-full text-slate-500 hover:text-white hover:bg-white/10 transition-colors"
+          className="w-full flex items-center justify-center py-2 rounded-full text-muted-foreground hover:text-white hover:bg-white/10 transition-colors"
         >
           {collapsed ? (
             <ChevronRight className="w-4 h-4" />

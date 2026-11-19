@@ -172,13 +172,13 @@ export default function Login() {
               type="checkbox"
               checked={remember}
               onChange={(e) => setRemember(e.target.checked)}
-              className="w-4 h-4 rounded accent-[#243370] cursor-pointer"
+              className="w-4 h-4 rounded accent-[#15803d] cursor-pointer"
             />
             {t("login.rememberMe")}
           </label>
           <Link
             href="/forgot-password"
-            className="text-[13px] font-medium text-[#243370] dark:text-blue-400 hover:underline"
+            className="text-[13px] font-medium text-[#15803d] dark:text-[#4ade80] hover:underline"
           >
             {t("login.forgotPassword")}
           </Link>
@@ -195,7 +195,7 @@ export default function Login() {
 
         <Button
           type="submit"
-          className="w-full bg-[#243370] hover:bg-[#1c2a5c] text-white h-11 text-[15px] font-semibold"
+          className="w-full bg-[#15803d] hover:bg-[#0d1c10] text-white h-11 text-[15px] font-semibold"
           disabled={loading}
         >
           {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -253,7 +253,7 @@ export default function Login() {
         {t("login.noAccount")}{" "}
         <Link
           href="/register"
-          className="font-semibold text-[#243370] dark:text-blue-400 hover:underline"
+          className="font-semibold text-[#15803d] dark:text-[#4ade80] hover:underline"
         >
           {t("login.registerLink")}
         </Link>

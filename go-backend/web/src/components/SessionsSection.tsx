@@ -91,7 +91,7 @@ export default function SessionsSection() {
           key={s.id}
           className={cn(
             "flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5",
-            s.current && "border-[#243370]/40"
+            s.current && "border-[#15803d]/40"
           )}
         >
           <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -101,7 +101,7 @@ export default function SessionsSection() {
             <p className="text-sm font-medium flex items-center gap-2">
               <span className="truncate">{deviceLabel(t, s.userAgent)}</span>
               {s.current && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#243370]/10 text-[#243370] dark:text-blue-300 shrink-0">
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#15803d]/10 text-[#15803d] dark:text-[#4ade80] shrink-0">
                   {t("sessionsSection.thisDevice")}
                 </span>
               )}
