@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -72,7 +71,7 @@ func main() {
 	router := handler.NewRouter(cfg, db, waManager)
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%s", cfg.Port),
+		Addr:         cfg.ListenAddr(),
 		Handler:      router,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
@@ -81,7 +80,7 @@ func main() {
 
 	// Graceful shutdown
 	go func() {
-		log.Info().Str("port", cfg.Port).Msg("Server listening")
+		log.Info().Str("addr", cfg.ListenAddr()).Msg("Server listening")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal().Err(err).Msg("Server failed")
 		}

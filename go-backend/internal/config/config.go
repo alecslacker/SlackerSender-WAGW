@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -78,10 +79,11 @@ func AIDefaultModel() string { return aiModel }
 
 type Config struct {
 	// Server
-	Port    string
-	GinMode string
-	AppName string
-	AppURL  string
+	Port       string
+	ListenHost string
+	GinMode    string
+	AppName    string
+	AppURL     string
 
 	// Database
 	DatabaseURL string
@@ -121,6 +123,15 @@ type Config struct {
 	TelegramChatID   string
 }
 
+// ListenAddr mengembalikan alamat bind server HTTP. LISTEN_HOST kosong = semua
+// antarmuka (cocok untuk Docker). Production di belakang nginx/aaPanel sebaiknya
+// diisi 127.0.0.1: port aplikasi jadi tak terjangkau dari luar, sehingga header
+// X-Real-IP milik nginx (dipakai rate limiter) tidak bisa dipalsukan langsung.
+func (c *Config) ListenAddr() string {
+	host := strings.Trim(strings.TrimSpace(c.ListenHost), "[]")
+	return net.JoinHostPort(host, c.Port)
+}
+
 func Load() *Config {
 	_ = godotenv.Load()
 
@@ -136,10 +147,11 @@ func Load() *Config {
 	SetAIDefaults(getEnv("AI_DEFAULT_BASE_URL", FallbackAIBaseURL), getEnv("AI_DEFAULT_MODEL", FallbackAIModel))
 
 	return &Config{
-		Port:    getEnv("PORT", "8080"),
-		GinMode: getEnv("GIN_MODE", "debug"),
-		AppName: getEnv("APP_NAME", "SlackerSender"),
-		AppURL:  getEnv("APP_URL", "http://localhost:8080"),
+		Port:       getEnv("PORT", "8080"),
+		ListenHost: getEnv("LISTEN_HOST", ""),
+		GinMode:    getEnv("GIN_MODE", "debug"),
+		AppName:    getEnv("APP_NAME", "SlackerSender"),
+		AppURL:     getEnv("APP_URL", "http://localhost:8080"),
 
 		DatabaseURL: getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/wagataway?sslmode=disable"),
 		RedisURL:    getEnv("REDIS_URL", ""),
