@@ -1,0 +1,1 @@
+const n="wag:unread-changed";function d(){typeof window<"u"&&window.dispatchEvent(new Event(n))}function t(e){return typeof window>"u"?()=>{}:(window.addEventListener(n,e),()=>window.removeEventListener(n,e))}export{d as n,t as o};

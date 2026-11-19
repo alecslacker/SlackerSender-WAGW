@@ -49,6 +49,7 @@ func registerChatRoutes(rg *gin.RouterGroup, db *gorm.DB, wm *whatsapp.Manager) 
 	chat := rg.Group("/chat", middleware.RequireScope("chat"))
 	{
 		chat.GET("/conversations", listConversations(db, wm))
+		chat.GET("/unread-count", getUnreadCount(db))
 		chat.GET("/history", getChatHistory(db))
 		chat.GET("/messages/:phone", getChatMessages(db, wm))
 		chat.POST("/send", sendChatMessage(db, wm))
@@ -570,15 +571,54 @@ func markConversationRead(db *gorm.DB) gin.HandlerFunc {
 		udb := rls.Scoped(db, userID)
 		phone := c.Param("phone")
 
-		udb.Model(&models.ChatInbox{}).
-			Where("user_id = ? AND phone = ? AND is_read = ?", userID, phone, false).
-			Update("is_read", true)
-
-		udb.Model(&models.ChatConversation{}).
-			Where("user_id = ? AND phone = ?", userID, phone).
-			Update("unread_count", 0)
+		// deviceId opsional (kompatibel mundur): nomor yang sama bisa ada di
+		// beberapa device; tanpa filter ini membuka satu percakapan ikut
+		// menghapus angka belum-dibaca di device lain.
+		inboxQ := udb.Model(&models.ChatInbox{}).
+			Where("user_id = ? AND phone = ? AND is_read = ?", userID, phone, false)
+		convQ := udb.Model(&models.ChatConversation{}).
+			Where("user_id = ? AND phone = ?", userID, phone)
+		if id, err := strconv.ParseUint(c.Query("deviceId"), 10, 32); err == nil && id != 0 {
+			inboxQ = inboxQ.Where("device_id = ?", id)
+			convQ = convQ.Where("device_id = ?", id)
+		}
+		inboxQ.Update("is_read", true)
+		convQ.Update("unread_count", 0)
 
 		c.JSON(http.StatusOK, gin.H{"message": "Ditandai dibaca"})
+	}
+}
+
+// getUnreadCount: GET /api/chat/unread-count?deviceId=&status=
+// Total pesan belum dibaca untuk badge menu Live Chat. Memakai aturan yang
+// SAMA dengan daftar percakapan (filter device, status default "open",
+// cakupan agent tim) supaya angka menu dan daftar tidak berbeda.
+func getUnreadCount(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := middleware.GetUserID(c)
+		udb := rls.Scoped(db, userID)
+
+		query := udb.Model(&models.ChatConversation{}).Where("user_id = ?", userID)
+		if id, err := strconv.ParseUint(c.Query("deviceId"), 10, 32); err == nil && id != 0 {
+			query = query.Where("device_id = ?", id)
+		}
+		query = scopeConversationsForTeam(query, resolveTeamContext(c, db, userID))
+
+		statuses, ok := statusFilterClause(c.DefaultQuery("status", "open"))
+		if !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Status tidak dikenal"})
+			return
+		}
+		if len(statuses) > 0 {
+			query = query.Where("status IN ?", statuses)
+		}
+
+		var total int64
+		if err := query.Select("COALESCE(SUM(unread_count), 0)").Scan(&total).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Gagal menghitung pesan belum dibaca"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"unreadCount": total})
 	}
 }
 

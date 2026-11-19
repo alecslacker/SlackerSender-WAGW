@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { cn } from "@/lib/utils";
 import { apiGet } from "@/lib/api";
+import { onUnreadChanged } from "@/lib/unread-bus";
 import { useActiveDevice, type ActiveDevice } from "@/hooks/use-active-device";
 import { Dropdown } from "@/components/ui/dropdown";
 import { useAuth } from "@/hooks/use-auth";
@@ -403,21 +404,42 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onClose }: SidebarPro
       })
       .catch(() => {});
 
-    apiGet<{ conversations: { unreadCount?: number }[] }>("/chat/conversations")
-      .then((d) => {
-        if (cancelled) return;
-        const n = (d.conversations || []).reduce(
-          (a, c) => a + (c.unreadCount || 0),
-          0
-        );
-        setBadges((p) => ({ ...p, "/live-chat": n }));
-      })
-      .catch(() => {});
-
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Badge Live Chat: SATU sumber (server) yang cakupannya sama dengan daftar
+  // percakapan — device aktif + antrean "open". Disegarkan saat device aktif
+  // berganti, saat halaman Live Chat memberi sinyal (pesan masuk / dibaca),
+  // saat tab kembali terlihat, dan berkala sebagai jaring pengaman.
+  const { activeDeviceId } = useActiveDevice();
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      const qs = activeDeviceId != null ? `?deviceId=${activeDeviceId}` : "";
+      apiGet<{ unreadCount?: number }>(`/chat/unread-count${qs}`)
+        .then((d) => {
+          if (cancelled) return;
+          const n = typeof d.unreadCount === "number" ? d.unreadCount : 0;
+          setBadges((p) => (p["/live-chat"] === n ? p : { ...p, "/live-chat": n }));
+        })
+        .catch(() => {});
+    };
+    load();
+    const off = onUnreadChanged(load);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = window.setInterval(load, 60_000);
+    return () => {
+      cancelled = true;
+      off();
+      document.removeEventListener("visibilitychange", onVisible);
+      window.clearInterval(timer);
+    };
+  }, [activeDeviceId]);
 
   const toggleSection = (label: string) => {
     setOpenSections((prev) =>

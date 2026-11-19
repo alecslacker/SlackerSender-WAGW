@@ -9,7 +9,11 @@ import { toast } from "sonner";
 import { useActiveDevice } from "@/hooks/use-active-device";
 import { useAuth } from "@/hooks/use-auth";
 import { useLang } from "@/lib/i18n";
+import { notifyUnreadChanged } from "@/lib/unread-bus";
 import { DateTimePicker } from "@/components/DateTimePicker";
+
+// Query "?deviceId=N" untuk endpoint chat yang dibatasi per device ("" bila belum dipilih).
+const deviceQuery = (id: number | null | undefined) => (id != null ? `?deviceId=${id}` : "");
 
 interface Template {
   id: number;
@@ -689,8 +693,11 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
     apiGet<{ messages: any[] }>(`/chat/messages/${activePhone}`)
       .then((d) => setMessages((d.messages || []).map(normalizeMsg)))
       .catch(() => {});
-    // Mark as read (backend: PATCH)
-    apiPatch(`/chat/conversations/${activePhone}/read`).catch(() => {});
+    // Mark as read (backend: PATCH) — deviceId agar hanya percakapan di device
+    // ini yang dikosongkan; badge menu disegarkan setelah server selesai.
+    apiPatch(`/chat/conversations/${activePhone}/read${deviceQuery(activeDeviceId)}`)
+      .catch(() => {})
+      .finally(notifyUnreadChanged);
     setConversations((prev) =>
       prev.map((c) => (c.phone === activePhone ? { ...c, unreadCount: 0 } : c))
     );
@@ -787,7 +794,12 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
           }
           // Percakapan yang sedang dibuka: tandai terbaca agar badge tidak menumpuk.
           if (isActiveConvo && data.direction === "in") {
-            apiPatch(`/chat/conversations/${data.phone}/read`).catch(() => {});
+            apiPatch(`/chat/conversations/${data.phone}/read${deviceQuery(activeDeviceIdRef.current)}`)
+              .catch(() => {})
+              .finally(notifyUnreadChanged);
+          } else if (data.direction === "in") {
+            // Pesan masuk di percakapan lain: badge menu ikut naik.
+            notifyUnreadChanged();
           }
           if (isActiveConvo) {
             const incoming = normalizeMsg(data);
@@ -1047,6 +1059,8 @@ export default function LiveChat({ embedded: _embedded = false }: { embedded?: b
     try {
       await apiPatch(`/chat/conversations/${activePhone}/status`, { status });
       loadConversations(statusFilter, activeDeviceId);
+      // Pindah antrean (selesai/arsip/buka lagi) menggeser total badge menu.
+      notifyUnreadChanged();
       // Tutup percakapan aktif bila status barunya keluar dari filter saat ini.
       const stillVisible =
         (statusFilter === "open" && (status === "open" || status === "pending")) ||
