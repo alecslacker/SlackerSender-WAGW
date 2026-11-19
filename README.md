@@ -7,7 +7,7 @@
 
 **Platform WhatsApp Gateway SaaS** — kirim pesan otomatis, blast massal, auto-reply, live chat + AI, drip campaign, dan integrasi — dalam satu binary Go, tanpa Node.js.
 
-> **Coba langsung:** [wa.clipku.com](https://wa.clipku.com)
+> **Coba langsung:** [wasender.slackercode.us](https://wasender.slackercode.us)
 
 ## Daftar Isi
 
@@ -82,7 +82,7 @@ Yang membedakan WaGataway:
 ### Billing & Langganan
 
 - **Paket langganan** — Free, Lite, Regular, Pro, Master dengan kuota pesan
-- **QRIS** — bayar via Clipku Pay, QR dinormalisasi otomatis jadi gambar
+- **QRIS** — bayar via Clipku Pay, QR dirender lokal di server (payload tidak dikirim ke layanan QR pihak ketiga)
 - **Voucher** — kode voucher trial/paket, ditukar di Settings → tab Tukar Voucher + riwayat penukaran
 - **Transaksi & riwayat** — log pembayaran lengkap
 
@@ -195,6 +195,9 @@ JWT_SECRET=your-secret-key
 WA_SESSIONS_DIR=./wa-sessions
 OPENAI_API_KEY=sk-xxx
 ANTHROPIC_API_KEY=sk-ant-xxx
+# Backend AI bawaan (9router, OpenAI-compatible); ganti bila pindah server
+AI_DEFAULT_BASE_URL=https://9router.dutacorpora.co.id/v1
+AI_DEFAULT_MODEL=ag/gemini-3.8-flash-low
 # Pembayaran QRIS
 CLIPKUPAY_API_KEY=
 CLIPKUPAY_BASE_URL=https://m.clipku.com
