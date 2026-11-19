@@ -35,22 +35,28 @@ sudo /www/server/nginx/sbin/nginx -t && sudo /www/server/nginx/sbin/nginx -s rel
 
 PERINGATAN: mengubah pengaturan situs ini lewat panel aaPanel bisa menimpa vhost nginx buatan tangan. Setelah itu cek `proxy_pass http://127.0.0.1:8080` masih ada.
 
-## Admin pertama
+## Admin
 
-DB production kosong (0 user). Daftar lewat halaman Register, lalu di server:
+Admin produksi: `irawanriswandha@gmail.com` (diangkat 2026-11-19). Admin berikutnya dikelola dari panel Admin. Bila perlu mengangkat lewat server (akun harus sudah terdaftar), jalankan sebagai root agar env terbaca:
 
 ```bash
 cd /www/wwwroot/wasender.slackercode.us
-sudo -u slackersender bash -c 'set -a; . /etc/slackersender/slackersender.env; set +a; ./slackersender-server make-admin anda@domain.com'
+sudo bash -c 'set -a; . /etc/slackersender/slackersender.env; set +a; ./slackersender-server make-admin anda@domain.com'
 ```
 
-(`/etc/slackersender/slackersender.env` hanya terbaca root, jadi jalankan lewat `sudo bash -c` yang membaca env sebagai root lalu `exec` sebagai user layanan, atau jalankan sebagai root.)
+## Update versi (cara yang dipakai pada rilis 3)
 
-## Update versi
+1. Pastikan HEAD bersih, tes lulus, lalu `pnpm build`. Bangun tarball: `python -I .trae/documents/build_release.py <go-backend> <rilis.tar.gz>` (tulis sha256 otomatis).
+2. Unggah, cek sha256, ekstrak ke `src3/`, build di server saat layanan lama masih jalan (tanpa downtime): `nice -n 19 ionice -c3 go build -p 1 -trimpath -ldflags="-s -w"` (CGO aktif; ±1 mnt dengan cache).
+3. Cadangkan binary + `web/dist` lama + `pg_dump --no-owner --enable-row-security -Fc` (tanpa `--enable-row-security` dump GAGAL karena RLS dipaksa) ke `/root/backup-slackersender/rilisN-<waktu>/`; folder terbaru dicatat di `/root/backup-slackersender/TERAKHIR`.
+4. Ganti binary + dist lalu start; skrip memeriksa `/health` hingga 30 dtk dan rollback otomatis bila gagal sehat. Server hanya mendaftarkan SPA bila `web/dist/index.html` ada saat startup.
+5. Hapus akun uji E2E (`email like 'e2e-%@example.invalid'` beserta data turunannya) — jangan sentuh akun lain.
 
-1. Bangun tarball (`build_release.py`), unggah, cek sha256.
-2. Build di server: `nice -n 19 ionice -c3 go build -p 1 -trimpath -ldflags="-s -w"` (CGO aktif; server juga melayani situs CBT).
-3. `systemctl stop slackersender` → ganti binary + `web/dist` → `start`. Server hanya mendaftarkan SPA bila `web/dist/index.html` ada saat startup.
+## Rilis berjalan
+
+Rilis 3 = commit `0829267` (module Go `github.com/alecslacker/SlackerSender-WAGW/go-backend`): CSP ketat, font lokal (tanpa Google Fonts), AI bawaan 9router, migrasi data host AI lama (berjalan sekali, flag `ai_legacy_host_migrated_v1`), `LISTEN_HOST`. Tes lokal 261 PASS / 0 SKIP / 0 FAIL (2 run). Binary sha256 `2aa1c2b0…`. Cadangan rilis 2 + dump DB: `/root/backup-slackersender/rilis2-20261119-120810/`.
+
+Rollback ke rilis 2: hentikan layanan, kembalikan `slackersender-server` dan `dist/` dari folder cadangan itu, start. Dump DB hanya perlu dipakai bila migrasi merusak data (tidak terjadi pada rilis 3).
 
 ## Hasil verifikasi (produksi, via HTTPS)
 
@@ -60,7 +66,8 @@ sudo -u slackersender bash -c 'set -a; . /etc/slackersender/slackersender.env; s
 - 5 endpoint compat (POST + GET): kunci palsu → 401; scope ditegakkan (key `messages:send` ditolak 403 di `info-device`, key `devices:read` ditolak 403 di `send-message`).
 - SSE: terbuka 0,12 dtk, tidak tertahan buffer.
 - Port 8080 dari luar: tertutup. Situs lain di server: tidak terganggu.
-- Akun/data uji dihapus (users 0, api_keys 0, subscriptions 0, plans 5).
+- Akun/data uji dihapus setelah tiap uji (sisa: 1 akun admin, 5 plans, 0 api_keys).
+- Rilis 3: header CSP aktif di halaman (tidak di `/api`), konsol browser 0 error/peringatan, 0 permintaan ke luar origin, video hero berputar, font VT323/Inter/JetBrains Mono termuat dari server sendiri; E2E compat + scope + SSE diulang dan lulus.
 
 ## Belum terverifikasi
 
