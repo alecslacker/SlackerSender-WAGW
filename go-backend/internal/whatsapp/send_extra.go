@@ -55,6 +55,12 @@ type SendOptions struct {
 	// admin broadcast WA (lihat paket quota untuk keputusan desain).
 	QuotaUserID  uint
 	QuotaBypass  bool
+
+	// SkipChatLog = true bila pemanggil SUDAH mencatat pesan ini ke Live Chat
+	// sendiri (kirim dari layar Live Chat) — mencegah baris ganda. Selain itu
+	// SendMessageWithOptions mencatat pesan keluar ke chat_inboxes + SSE agar
+	// balasan otomatis, Menu Bot, AI, API, dan bulk tampil di Live Chat.
+	SkipChatLog bool
 }
 
 // replyContext membangun ContextInfo untuk membalas pesan tertentu.
@@ -273,6 +279,10 @@ func (m *Manager) SendMessageWithOptions(deviceID uint, to string, opts SendOpti
 		Str("type", msgType).
 		Str("waMsgID", waMsgID).
 		Msg("WhatsApp message sent")
+
+	if !opts.SkipChatLog {
+		m.recordOutgoingChat(sess, jid, waMsgID, opts)
+	}
 
 	return waMsgID, nil
 }

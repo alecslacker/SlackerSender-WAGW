@@ -252,6 +252,7 @@ func sendChatMessage(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 			ReplyTo:     req.ReplyTo,
 			FileName:    req.FileName,
 			QuotaUserID: userID,
+			SkipChatLog: true, // handler ini mencatat ke Live Chat sendiri (ada replyContent, mediaUrl publik)
 		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Gagal mengirim: " + err.Error()})
@@ -490,7 +491,9 @@ func aiReplyMessage(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 		if !requireMessageQuota(c, udb, userID, 1) {
 			return
 		}
-		sendErr := wm.SendMessage(req.DeviceID, to, "text", aiResp.Content, "")
+		_, sendErr := wm.SendMessageWithOptions(req.DeviceID, to, whatsapp.SendOptions{
+			Type: "text", Content: aiResp.Content, SkipChatLog: true, // dicatat handler ini (isAI)
+		})
 		if sendErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"message": "Gagal mengirim balasan AI: " + sendErr.Error(),
@@ -807,8 +810,10 @@ func ProcessIncomingForAI(db *gorm.DB, wm *whatsapp.Manager, userID, deviceID ui
 	}
 
 	// Send AI reply
-	sendErr := wm.SendMessage(deviceID, phone, "text", resp.Content, "")
-	if sendErr != nil {
+		_, sendErr := wm.SendMessageWithOptions(deviceID, phone, whatsapp.SendOptions{
+			Type: "text", Content: resp.Content, SkipChatLog: true, // dicatat handler ini (isAI)
+		})
+		if sendErr != nil {
 		log.Error().Err(sendErr).Msg("Failed to send AI auto-reply")
 		return
 	}

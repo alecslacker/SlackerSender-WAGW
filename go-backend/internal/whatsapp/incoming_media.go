@@ -374,3 +374,148 @@ func (m *Manager) fetchIncomingMedia(sess *SessionState, msg *events.Message, in
 		},
 	})
 }
+
+// ── Pencatatan pesan KELUAR ke Live Chat ─────────────────────────────────────
+
+// outgoingChatText memilih teks tampilan Live Chat untuk pesan keluar.
+// Media tanpa keterangan dibiarkan kosong (frontend menampilkan label tipenya).
+func outgoingChatText(opts SendOptions) string {
+	switch opts.Type {
+	case "document":
+		// Content = nama file bila FileName kosong; keterangan tidak dipakai.
+		return ""
+	case "poll":
+		return "📊 " + opts.Content
+	case "location":
+		if opts.LocName != "" {
+			return "📍 " + opts.LocName
+		}
+		return "📍 Lokasi"
+	case "sticker", "audio", "voicenote", "voice":
+		return ""
+	}
+	return opts.Content
+}
+
+// outgoingChatType memetakan tipe kirim ke tipe tampilan Live Chat.
+func outgoingChatType(t string) string {
+	switch t {
+	case "", "text", "interactive", "buttons":
+		return "text"
+	case "voice":
+		return "voicenote"
+	case "poll", "location":
+		return "text"
+	}
+	return t
+}
+
+// chatPhoneForJID menentukan kunci percakapan (chat_conversations.phone) untuk
+// JID tujuan. JID @lid dipetakan ke nomor asli bila percakapannya sudah
+// berkunci nomor asli; kalau tidak, memakai bagian user JID apa adanya.
+func (m *Manager) chatPhoneForJID(sess *SessionState, jid types.JID) string {
+	user := jid.User
+	if jid.Server == types.HiddenUserServer {
+		var conv models.ChatConversation
+		if err := m.db.Where("user_id = ? AND device_id = ? AND sender_j_id = ?",
+			sess.UserID, sess.DeviceID, jid.ToNonAD().String()).First(&conv).Error; err == nil && conv.Phone != "" {
+			return conv.Phone
+		}
+		if pn := m.ResolvePNForLID(sess.DeviceID, user); pn != "" {
+			return pn
+		}
+	}
+	return user
+}
+
+// recordOutgoingChat mencatat pesan keluar ke chat_inboxes (direction "out"),
+// memperbarui ringkasan percakapan, dan menyiarkan SSE "chat:message" agar
+// Live Chat menampilkan balasan otomatis / Menu Bot / AI / API / bulk — bukan
+// hanya pesan yang diketik di layar Live Chat. Best-effort: gagal hanya di-log.
+func (m *Manager) recordOutgoingChat(sess *SessionState, jid types.JID, waMsgID string, opts SendOptions) {
+	// Grup & broadcast tidak punya kunci percakapan yang sama dengan DM.
+	if jid.Server != types.DefaultUserServer && jid.Server != types.HiddenUserServer {
+		return
+	}
+	if m.db == nil || sess == nil {
+		return
+	}
+	phone := m.chatPhoneForJID(sess, jid)
+	if phone == "" {
+		return
+	}
+	// Jangan membuat baris ganda bila WA ID yang sama sudah tercatat.
+	if waMsgID != "" {
+		var n int64
+		m.db.Model(&models.ChatInbox{}).
+			Where("user_id = ? AND device_id = ? AND wa_message_id = ? AND direction = ?",
+				sess.UserID, sess.DeviceID, waMsgID, "out").Count(&n)
+		if n > 0 {
+			return
+		}
+	}
+
+	display := outgoingChatText(opts)
+	msgType := outgoingChatType(opts.Type)
+	mediaURL := opts.MediaURL
+	// file:// = path server (mis. media upload Live Chat) — bukan URL publik.
+	if strings.HasPrefix(mediaURL, "file://") {
+		mediaURL = ""
+	}
+
+	inbox := models.ChatInbox{
+		UserID:      sess.UserID,
+		DeviceID:    sess.DeviceID,
+		Phone:       phone,
+		SenderJID:   jid.ToNonAD().String(),
+		Content:     display,
+		Type:        msgType,
+		Direction:   "out",
+		MediaURL:    mediaURL,
+		IsRead:      true,
+		WaMessageID: waMsgID,
+	}
+	if opts.ReplyTo != "" {
+		inbox.ReplyTo = opts.ReplyTo
+	}
+	if err := m.db.Create(&inbox).Error; err != nil {
+		log.Warn().Err(err).Uint("deviceID", sess.DeviceID).Msg("Gagal mencatat pesan keluar ke Live Chat")
+		return
+	}
+
+	summary := display
+	if summary == "" {
+		summary = "[" + msgType + "]"
+	}
+	var conv models.ChatConversation
+	now := time.Now()
+	if err := m.db.Where("user_id = ? AND device_id = ? AND phone = ?",
+		sess.UserID, sess.DeviceID, phone).First(&conv).Error; err != nil {
+		m.db.Create(&models.ChatConversation{
+			UserID: sess.UserID, DeviceID: sess.DeviceID, Phone: phone,
+			SenderJID:   jid.ToNonAD().String(),
+			LastMessage: truncate(summary, 200), LastMessageType: msgType, LastActivity: now,
+		})
+	} else {
+		m.db.Model(&conv).Updates(map[string]interface{}{
+			"last_message": truncate(summary, 200), "last_message_type": msgType, "last_activity": now,
+		})
+	}
+	m.RecordFirstResponse(sess.UserID, sess.DeviceID, phone)
+
+	realtime.DefaultHub.SendToUser(sess.UserID, realtime.Event{
+		Type: "chat:message",
+		Payload: map[string]interface{}{
+			"id":          inbox.ID,
+			"deviceId":    sess.DeviceID,
+			"waMessageId": waMsgID,
+			"phone":       phone,
+			"content":     display,
+			"direction":   "out",
+			"type":        msgType,
+			"mediaUrl":    mediaURL,
+			"createdAt":   inbox.CreatedAt,
+			"isRead":      true,
+		},
+	})
+}
