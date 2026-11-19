@@ -155,7 +155,7 @@ Compose menyediakan app, PostgreSQL 16, dan Redis. Port `5432` tidak diekspos ke
 
 ## Deploy Production
 
-Binary dan `web/dist` disajikan oleh satu proses Go. Panduan lengkap (tanpa kredensial) ada di [`.trae/documents/deploy-production.md`](.trae/documents/deploy-production.md).
+Binary dan `web/dist` disajikan oleh satu proses Go. Panduan operasional produksi disimpan terpisah dari repo (arsip lokal tim) dan tidak ikut dipublikasikan.
 
 ```bash
 cd go-backend
@@ -361,7 +361,7 @@ SlackerSender-WAGW/
 │   ├── seed_plans.sql
 │   └── Dockerfile / docker-compose.yml / Makefile
 ├── motion/                  # Project Remotion untuk video hero (opsional)
-└── .trae/documents/         # Rencana, panduan deploy dan skrip pendukung
+└── (arsip deploy tim disimpan di luar repo)
 ```
 
 ## Berkontribusi

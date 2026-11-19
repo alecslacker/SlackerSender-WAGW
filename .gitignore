@@ -48,5 +48,7 @@ Thumbs.db
 /go-backend/docker-compose.override.yml
 /go-backend/web-dist-static/
 
-# Sumber logo Slackercode (salinan final sudah ada di go-backend/web/public)
-/.trae/documents/*.png
+# Arsip lokal tim & konfigurasi otomasi: sengaja TIDAK dipublikasikan.
+# Berisi panduan deploy, skrip operasional, dan workflow rilis privat.
+/.trae/
+/.github/
