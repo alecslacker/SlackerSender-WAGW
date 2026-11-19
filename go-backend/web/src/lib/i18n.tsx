@@ -1049,7 +1049,7 @@ const id = {
     paramCompatApiKey: "API key dari Settings → API Key (di body, bukan header)",
     paramCompatSender: "Nomor / ID / nama perangkat pengirim. Kosong = perangkat default",
     paramCompatNumber: "Nomor penerima, format 62xxx tanpa +",
-    paramCompatNumberMulti: "Nomor penerima, format 62xxx tanpa +. Untuk banyak nomor pisahkan dengan |, contoh 6281111|6282222 (pesan yang sama dikirim ke semuanya; nomor ganda dikirim sekali)",
+    paramCompatNumberMulti: "Nomor penerima, format 62xxx tanpa +. Bisa juga ID grup WhatsApp, contoh 120363398726060191@g.us. Untuk banyak penerima pisahkan dengan |, contoh 6281111|6282222|120363398726060191@g.us (pesan yang sama dikirim ke semuanya; penerima ganda dikirim sekali)",
     compatMultiNote: "Banyak nomor: isi number dengan beberapa nomor dipisah | (juga diterima: koma, titik koma, baris baru). Setiap nomor dicatat sebagai pesan sendiri dan dikirim berurutan dengan jeda acak 2–5 detik. Kuota dicek untuk total nomor di awal; bila tidak cukup, seluruh request ditolak (429). Maksimal nomor per request mengikuti batas bulk paket aktif. Respons untuk banyak nomor menambah \"ids\" (daftar ID pesan) dan \"total\".",
     paramCompatMessage: "Isi pesan (maks 10.000 karakter)",
     paramCompatMediaType: "image | video | audio | document (kosong / tak dikenal = image)",

@@ -361,6 +361,69 @@ func TestWampSendMultiNumbersDB(t *testing.T) {
 	time.Sleep(300 * time.Millisecond) // recordReport berjalan tepat setelah status diperbarui
 }
 
+// Format Slackersender: penerima boleh nomor personal ATAU ID grup
+// ("120363398726060191@g.us", 23 karakter) dan keduanya boleh dicampur dengan "|".
+// Regression: kolom messages.to dulu varchar(20) sehingga ID grup gagal disimpan (500).
+func TestWampSendGroupJIDDB(t *testing.T) {
+	db := auditTestDB(t)
+	if err := db.AutoMigrate(&models.User{}, &models.ApiKey{}, &models.Device{}, &models.Message{}, &models.MessageReport{}); err != nil {
+		t.Fatalf("AutoMigrate: %v", err)
+	}
+
+	cleanup := func() {
+		var u models.User
+		if err := db.Unscoped().Where("email = ?", "wamp-group@example.test").First(&u).Error; err == nil {
+			db.Unscoped().Where("user_id = ?", u.ID).Delete(&models.MessageReport{})
+			db.Unscoped().Where("user_id = ?", u.ID).Delete(&models.Message{})
+		}
+		db.Unscoped().Where("name LIKE ?", "wamp-group-%").Delete(&models.ApiKey{})
+		db.Unscoped().Where("name LIKE ?", "wamp-group-%").Delete(&models.Device{})
+		db.Unscoped().Where("email = ?", "wamp-group@example.test").Delete(&models.User{})
+	}
+	cleanup()
+	defer cleanup()
+
+	u := models.User{Name: "wamp-group-user", Email: "wamp-group@example.test"}
+	if err := db.Create(&u).Error; err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	rawKey := "wamp-group-key-1"
+	ak := models.ApiKey{UserID: u.ID, Name: "wamp-group-key", KeyHash: models.HashAPIKey(rawKey), IsActive: true}
+	if err := db.Create(&ak).Error; err != nil {
+		t.Fatalf("seed api key: %v", err)
+	}
+	dev := models.Device{UserID: u.ID, Name: "wamp-group-dev", Phone: "628123460000", Status: "disconnected"}
+	if err := db.Create(&dev).Error; err != nil {
+		t.Fatalf("seed device: %v", err)
+	}
+
+	wm := whatsapp.NewManager(t.TempDir(), db)
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.POST("/send-message", wampSend(db, wm, false))
+
+	const group = "120363398726060191@g.us"
+	w := postJSON(r, "/send-message", `{"api_key":"`+rawKey+`","sender":"628123460000","number":"628111000003|`+group+`","message":"Halo"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("nomor + ID grup: status %d (%s), mau 200", w.Code, w.Body.String())
+	}
+	var msgs []models.Message
+	db.Where("user_id = ?", u.ID).Order("id").Find(&msgs)
+	if len(msgs) != 2 || msgs[0].To != "628111000003" || msgs[1].To != group {
+		t.Fatalf("catatan pesan tidak sesuai: %+v", msgs)
+	}
+
+	// Tunggu goroutine pengiriman selesai sebelum cleanup.
+	for deadline := time.Now().Add(15 * time.Second); time.Now().Before(deadline); time.Sleep(200 * time.Millisecond) {
+		var failed int64
+		db.Model(&models.Message{}).Where("user_id = ? AND status = ?", u.ID, "failed").Count(&failed)
+		if failed == 2 {
+			break
+		}
+	}
+	time.Sleep(300 * time.Millisecond)
+}
+
 // Regression end-to-end: key read-only ditolak 403 di endpoint compat.
 func TestWampScopeEnforcedDB(t *testing.T) {
 	db := auditTestDB(t)

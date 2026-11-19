@@ -11,7 +11,7 @@ type Message struct {
 	UserID     uint           `gorm:"index;not null" json:"userId"`
 	DeviceID   uint           `gorm:"index;not null" json:"deviceId"`
 	BulkJobID  *uint          `gorm:"index" json:"bulkJobId"`
-	To         string         `gorm:"size:20;not null;index" json:"to"`
+	To         string         `gorm:"size:64;not null;index" json:"to"` // nomor ATAU ID grup (120363...@g.us, 23 karakter)
 	Type       string         `gorm:"size:20;default:text" json:"type"` // text, image, video, document, audio, sticker
 	Content    string         `gorm:"type:text" json:"content"`
 	MediaURL   string         `gorm:"size:500" json:"mediaUrl"`

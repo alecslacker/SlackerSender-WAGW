@@ -25,6 +25,9 @@ func TestParseJIDNormalisasiNomor(t *testing.T) {
 		{"200506739830854:81@lid", "200506739830854@lid"},
 		{"6285777778781:5@s.whatsapp.net", "6285777778781@s.whatsapp.net"},
 		{"6285777778781.0:5@s.whatsapp.net", "6285777778781@s.whatsapp.net"},
+		// ID grup WhatsApp (format Slackersender) dipakai apa adanya.
+		{"120363398726060191@g.us", "120363398726060191@g.us"},
+		{" 120363398726060191@g.us ", "120363398726060191@g.us"},
 	}
 	for _, tc := range cases {
 		got, err := parseJID(tc.in)
