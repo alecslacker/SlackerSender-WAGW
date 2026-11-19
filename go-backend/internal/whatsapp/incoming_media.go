@@ -274,7 +274,7 @@ func (m *Manager) handleUndecryptable(sess *SessionState, v *events.Undecryptabl
 		return
 	}
 	sender := v.Info.Sender.User
-	senderJID := v.Info.Sender.String()
+	senderJID := v.Info.Sender.ToNonAD().String()
 	phone := sender
 	if v.Info.Sender.Server == types.HiddenUserServer && v.Info.SenderAlt.User != "" &&
 		v.Info.SenderAlt.Server == types.DefaultUserServer {

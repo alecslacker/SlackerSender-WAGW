@@ -40,6 +40,14 @@ func parseJID(phone string) (types.JID, error) {
 		if user == "" || server == "" {
 			return types.JID{}, fmt.Errorf("format JID tidak valid")
 		}
+		// JID perangkat ("user:23@lid" / "user.0:23@s.whatsapp.net") menunjuk
+		// SATU perangkat pengirim, bukan akunnya. Bila ":23" ikut terbawa ke
+		// User, WhatsApp tidak mengenali tujuan dan kueri usync kehabisan
+		// waktu ("failed to get device list ... context deadline exceeded").
+		// Balasan harus ke akun (tanpa suffix perangkat/agent).
+		if i := strings.IndexAny(user, ":."); i > 0 {
+			user = user[:i]
+		}
 		return types.NewJID(user, server), nil
 	}
 

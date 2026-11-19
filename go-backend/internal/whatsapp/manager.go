@@ -906,7 +906,9 @@ func (m *Manager) handleIncomingMessage(sess *SessionState, msg *events.Message)
 	sender := msg.Info.Sender.User
 	// JID lengkap pengirim (bisa @lid atau @s.whatsapp.net) — disimpan agar
 	// balasan tidak perlu lookup PN→LID yang bisa gagal ("no LID found").
-	senderJID := msg.Info.Sender.String()
+	// ToNonAD: buang suffix perangkat (":23") — balasan ke AKUN, bukan ke
+	// satu perangkat pengirim (lihat catatan di parseJID).
+	senderJID := msg.Info.Sender.ToNonAD().String()
 
 	// Nomor telepon asli pengirim untuk webhook/integrasi (mis. bot PPOB
 	// mencocokkan `from` dengan nomor WA user). Bila pengirim berupa LID,
