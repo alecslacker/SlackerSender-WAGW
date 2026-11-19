@@ -65,25 +65,19 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 			ip = c.ClientIP()
 		}
 
+		// Jendela tetap: reset dihitung dari awal jendela (bukan dari
+		// permintaan terakhir), supaya klien yang terus mencoba tetap pulih.
 		rl.mu.Lock()
+		now := time.Now()
 		v, exists := rl.visitors[ip]
-		if !exists {
-			rl.visitors[ip] = &visitor{count: 1, lastSeen: time.Now()}
-			rl.mu.Unlock()
-			c.Next()
-			return
-		}
-
-		if time.Since(v.lastSeen) > rl.window {
-			v.count = 1
-			v.lastSeen = time.Now()
+		if !exists || now.Sub(v.lastSeen) > rl.window {
+			rl.visitors[ip] = &visitor{count: 1, lastSeen: now}
 			rl.mu.Unlock()
 			c.Next()
 			return
 		}
 
 		v.count++
-		v.lastSeen = time.Now()
 
 		if v.count > rl.limit {
 			rl.mu.Unlock()
