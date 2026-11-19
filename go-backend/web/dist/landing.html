@@ -2,57 +2,207 @@
 <html lang="id" data-theme="kumo">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/slackercode.png" />
+    <link rel="apple-touch-icon" href="/slackercode.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#050805" />
     <style>
-      html,body{background:#fff;margin:0}
-      .wa-boot{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
-      .wa-boot .wa-logo{font-size:28px;font-weight:700;letter-spacing:-.5px;color:#243370}
-      .wa-boot .wa-spin{width:28px;height:28px;border-radius:50%;border:3px solid #c7d2fe;border-top-color:#243370;animation:wa-spin 1s linear infinite}
-      @keyframes wa-spin{to{transform:rotate(360deg)}}
-      .wa-boot p{margin:0;font-size:14px;color:#64748b}
+      /* ── Splash boot terminal (tampil sebelum JS siap, hilang saat React mount) ── */
+      html,body{background:#050805;margin:0;height:100%}
+      .wa-boot{
+        position:fixed;inset:0;z-index:9999;
+        display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;
+        background:#050805;color:#4ade80;overflow:hidden;
+        font-family:'JetBrains Mono',ui-monospace,monospace;
+      }
+      /* grid + vignette latar */
+      .wa-boot::before{
+        content:"";position:absolute;inset:0;pointer-events:none;
+        background-image:
+          linear-gradient(rgba(74,222,128,.055) 1px,transparent 1px),
+          linear-gradient(90deg,rgba(74,222,128,.055) 1px,transparent 1px);
+        background-size:38px 38px;
+        -webkit-mask-image:radial-gradient(ellipse at 50% 45%,#000 25%,transparent 78%);
+        mask-image:radial-gradient(ellipse at 50% 45%,#000 25%,transparent 78%);
+      }
+      /* scanline CRT */
+      .wa-boot::after{
+        content:"";position:absolute;inset:0;pointer-events:none;z-index:3;
+        background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px);
+        opacity:.5;
+      }
+      .boot-frame{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:20px;padding:0 20px;text-align:center}
+
+      /* logo + glitch */
+      .boot-logo{position:relative;width:96px;height:96px;display:grid;place-items:center}
+      .boot-logo img{width:96px;height:96px;display:block;filter:drop-shadow(0 0 22px rgba(74,222,128,.5))}
+      .boot-logo .glitch{position:absolute;inset:0;opacity:0;mix-blend-mode:screen}
+      .boot-logo .glitch.g1{animation:boot-g1 2.4s steps(1) infinite}
+      .boot-logo .glitch.g2{animation:boot-g2 2.4s steps(1) infinite}
+      @keyframes boot-g1{
+        0%,80%,100%{opacity:0;transform:none;clip-path:inset(0 0 0 0)}
+        84%{opacity:.85;transform:translate(-5px,2px);clip-path:inset(18% 0 52% 0)}
+        88%{opacity:.85;transform:translate(4px,-2px);clip-path:inset(58% 0 18% 0)}
+        92%{opacity:0;transform:none}
+      }
+      @keyframes boot-g2{
+        0%,80%,100%{opacity:0;transform:none;clip-path:inset(0 0 0 0)}
+        85%{opacity:.8;transform:translate(5px,-1px);clip-path:inset(42% 0 36% 0);filter:hue-rotate(-35deg)}
+        90%{opacity:.8;transform:translate(-4px,1px);clip-path:inset(8% 0 74% 0);filter:hue-rotate(25deg)}
+        93%{opacity:0;transform:none}
+      }
+
+      .boot-title{
+        margin:0;font-family:'VT323','JetBrains Mono',monospace;
+        font-size:clamp(34px,8vw,56px);font-weight:400;letter-spacing:.1em;line-height:1;
+        color:#4ade80;text-shadow:0 0 26px rgba(74,222,128,.55);
+      }
+      .boot-title .caret{display:inline-block;width:.6em;animation:boot-blink 1s steps(1) infinite}
+      @keyframes boot-blink{50%{opacity:0}}
+
+      .boot-tag{margin:0;font-size:11px;letter-spacing:.34em;color:#2fb35d;text-transform:uppercase}
+
+      /* baris boot log */
+      .boot-log{
+        margin:0;padding:0;list-style:none;text-align:left;
+        font-size:11.5px;line-height:1.85;color:#2fb35d;min-height:7.4em;width:min(340px,86vw);
+      }
+      .boot-log li{opacity:0;animation:boot-line .34s cubic-bezier(.2,.8,.2,1) forwards}
+      .boot-log li b{color:#86efac;font-weight:700}
+      .boot-log li .ok{color:#22ff88;font-weight:700;float:right}
+      @keyframes boot-line{from{opacity:0;transform:translateX(-9px)}to{opacity:1;transform:none}}
+      .boot-log li:nth-child(1){animation-delay:.45s}
+      .boot-log li:nth-child(2){animation-delay:1.15s}
+      .boot-log li:nth-child(3){animation-delay:1.85s}
+      .boot-log li:nth-child(4){animation-delay:2.55s}
+
+      /* progress */
+      .boot-bar{position:relative;width:min(340px,86vw);height:3px;background:#102b18;border-radius:99px;overflow:hidden}
+      .boot-bar span{
+        position:absolute;inset:0;transform-origin:left;border-radius:99px;
+        background:linear-gradient(90deg,#15803d,#22ff88);
+        box-shadow:0 0 12px rgba(74,222,128,.7);
+        animation:boot-fill 4.1s cubic-bezier(.35,.85,.3,1) forwards;
+      }
+      @keyframes boot-fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+      .boot-pct{margin:0;font-size:10.5px;letter-spacing:.22em;color:#2fb35d}
+
+      /* pelepasan splash: pudar + sedikit menjauh */
+      .wa-boot{transition:opacity .5s ease,transform .5s ease}
+      .wa-boot.is-done{opacity:0;transform:scale(1.03);pointer-events:none}
+
+      @media (prefers-reduced-motion:reduce){
+        .boot-logo .glitch,.boot-title .caret{animation:none}
+        .boot-log li{opacity:1;animation:none}
+        .boot-bar span{animation:none;transform:scaleX(1)}
+      }
     </style>
-    <title>WaGataway — WhatsApp API Gateway Indonesia</title>
+    <title>SlackerSender — WhatsApp API Gateway Indonesia</title>
     <meta
       name="description"
       content="Kirim pesan WhatsApp otomatis lewat API — personal, broadcast, terjadwal, dan balasan otomatis. Mulai gratis, 1.000 pesan pertama tiap bulan."
     />
-    <link rel="canonical" href="https://wa.clipku.com/" />
-    <meta property="og:title" content="WaGataway — WhatsApp API Gateway Indonesia" />
+    <link rel="canonical" href="https://wasender.slackercode.us/" />
+    <meta property="og:title" content="SlackerSender — WhatsApp API Gateway Indonesia" />
     <meta
       property="og:description"
       content="Kirim pesan WhatsApp otomatis lewat API — personal, broadcast, terjadwal, dan balasan otomatis. Mulai gratis, 1.000 pesan pertama tiap bulan."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://wa.clipku.com/" />
-    <meta property="og:image" content="https://wa.clipku.com/og-image.png" />
+    <meta property="og:url" content="https://wasender.slackercode.us/" />
+    <meta property="og:image" content="https://wasender.slackercode.us/og-image.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="WaGataway — WhatsApp API Gateway Indonesia" />
+    <meta name="twitter:title" content="SlackerSender — WhatsApp API Gateway Indonesia" />
     <meta
       name="twitter:description"
       content="Kirim pesan WhatsApp otomatis lewat API — personal, broadcast, terjadwal, dan balasan otomatis. Mulai gratis."
     />
-    <meta name="twitter:image" content="https://wa.clipku.com/og-image.png" />
+    <meta name="twitter:image" content="https://wasender.slackercode.us/og-image.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700;800&family=VT323&display=swap"
       media="print"
       onload="this.media='all'"
     />
-    <link rel="preload" as="image" href="/illustrations/messaging-fun.svg" />
-    <script type="module" crossorigin src="/assets/landing-D9ktv2Yw.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/landing-CdRGLAsE.css">
+    <link rel="preload" as="image" href="/hero/hero-poster.webp" fetchpriority="high" />
+    <script type="module" crossorigin src="/assets/landing-D6v0gIEM.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/index-BdRY7pml.js">
+    <link rel="modulepreload" crossorigin href="/assets/createLucideIcon-CAaC8vHF.js">
+    <link rel="modulepreload" crossorigin href="/assets/x-BpyXH_65.js">
+    <link rel="modulepreload" crossorigin href="/assets/webhook-427m9FBY.js">
+    <link rel="modulepreload" crossorigin href="/assets/send-DmszTofQ.js">
+    <link rel="modulepreload" crossorigin href="/assets/timer-DqadB3ke.js">
+    <link rel="modulepreload" crossorigin href="/assets/zap-BgrFotjC.js">
+    <link rel="modulepreload" crossorigin href="/assets/shield-check-DXxc19k9.js">
+    <link rel="modulepreload" crossorigin href="/assets/users-BkA1do2a.js">
+    <link rel="modulepreload" crossorigin href="/assets/calendar-clock-DFgH-Gto.js">
+    <link rel="modulepreload" crossorigin href="/assets/repeat-BrVA5eGa.js">
+    <link rel="modulepreload" crossorigin href="/assets/paperclip-B9X65PQ0.js">
+    <link rel="modulepreload" crossorigin href="/assets/bot-s61VI1GB.js">
+    <link rel="modulepreload" crossorigin href="/assets/bell-ring-BGsvHaCb.js">
+    <link rel="modulepreload" crossorigin href="/assets/history-DLgdqXUJ.js">
+    <link rel="modulepreload" crossorigin href="/assets/smartphone-DqViztLh.js">
+    <link rel="modulepreload" crossorigin href="/assets/key-round-CIr0thlX.js">
+    <link rel="modulepreload" crossorigin href="/assets/flask-conical-BwMhox4l.js">
+    <link rel="modulepreload" crossorigin href="/assets/play-KyAbf7wM.js">
+    <link rel="modulepreload" crossorigin href="/assets/star-Zl55IMrp.js">
+    <link rel="modulepreload" crossorigin href="/assets/check-CTeYvoDL.js">
+    <link rel="modulepreload" crossorigin href="/assets/chevron-down-Bp-Z1R7_.js">
+    <link rel="modulepreload" crossorigin href="/assets/chevron-right-CZXv_Ru3.js">
+    <link rel="modulepreload" crossorigin href="/assets/Landing-C1yYwAmy.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-CzVjX4Vc.css">
   </head>
   <body>
-    <div id="root">
-      <div class="wa-boot">
-        <div class="wa-logo">WaGataway</div>
-        <div class="wa-spin"></div>
-        <p>Memuat…</p>
+    <div class="wa-boot" id="splash" role="status" aria-live="polite" aria-label="Memuat SlackerSender">
+      <div class="boot-frame">
+        <div class="boot-logo">
+          <img src="/slackercode-logo.png" alt="Logo SlackerSender" width="96" height="96" />
+          <img class="glitch g1" src="/slackercode-logo.png" alt="" aria-hidden="true" width="96" height="96" />
+          <img class="glitch g2" src="/slackercode-logo.png" alt="" aria-hidden="true" width="96" height="96" />
+        </div>
+        <div>
+          <h1 class="boot-title">SLACKERSENDER<span class="caret">_</span></h1>
+          <p class="boot-tag">WhatsApp API Gateway</p>
+        </div>
+        <ul class="boot-log" aria-hidden="true">
+          <li><b>&gt;</b> init core engine <span class="ok">OK</span></li>
+          <li><b>&gt;</b> mount api gateway <span class="ok">OK</span></li>
+          <li><b>&gt;</b> connect whatsapp link <span class="ok">OK</span></li>
+          <li><b>&gt;</b> load dashboard <span class="ok">OK</span></li>
+        </ul>
+        <div class="boot-bar" aria-hidden="true"><span></span></div>
+        <p class="boot-pct">MEMUAT SISTEM…</p>
       </div>
     </div>
+    <div id="root"></div>
+    <script>
+      // Splash dilepas setelah durasi minimum TERPENUHI dan aplikasi sudah
+      // ter-render (atau paksa lepas setelah 9 detik bila bundle gagal).
+      // User login → landing-entry redirect ke /dashboard, splash ikut hilang.
+      (function () {
+        var splash = document.getElementById('splash');
+        var MIN_MS = 3800;
+        var started = Date.now();
+        var done = false;
+        function hide() {
+          if (done) return;
+          done = true;
+          splash.classList.add('is-done');
+          setTimeout(function () { splash.remove(); }, 550);
+        }
+        function appReady() {
+          var root = document.getElementById('root');
+          return root && root.childElementCount > 0;
+        }
+        function wait() {
+          if (appReady() && Date.now() - started >= MIN_MS) return hide();
+          if (Date.now() - started > 9000) return hide();
+          setTimeout(wait, 60);
+        }
+        wait();
+      })();
+    </script>
   </body>
 </html>

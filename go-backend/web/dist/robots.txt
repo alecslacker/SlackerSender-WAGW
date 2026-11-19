@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://wa.clipku.com/sitemap.xml
+Sitemap: https://wasender.slackercode.us/sitemap.xml
