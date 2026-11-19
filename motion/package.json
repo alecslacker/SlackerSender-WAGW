@@ -1,0 +1,24 @@
+{
+  "name": "slackersender-hero-motion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Animasi hero SlackerSender (Remotion) — Author: Mas Wondho, Duta Corpora Indonesia (DCI)",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "render:webm": "remotion render src/index.ts HeroLoop out/hero-loop.webm --codec vp9 --crf 34 --muted --overwrite",
+    "render:mp4": "remotion render src/index.ts HeroLoop out/hero-loop.mp4 --codec h264 --crf 23 --muted --overwrite",
+    "poster": "remotion still src/index.ts HeroLoop out/hero-poster.png --frame 228 --overwrite"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.544",
+    "@remotion/google-fonts": "4.0.544",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.544"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.12",
+    "typescript": "5.6.3"
+  }
+}
