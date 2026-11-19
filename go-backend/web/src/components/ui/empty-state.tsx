@@ -23,9 +23,13 @@ export function EmptyState({ icon: Icon, title, hint, actionLabel, onAction }: E
       <p className="text-sm font-semibold text-foreground">{title}</p>
       {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
       {actionLabel && onAction && (
-        <Button size="sm" onClick={onAction} className="mt-4">
-          {actionLabel}
-        </Button>
+        // Tombol inline-flex tidak ikut `text-center` induknya (tampil bergeser
+        // ke kiri), jadi dibungkus flex justify-center agar tepat di tengah.
+        <div className="mt-4 flex justify-center">
+          <Button size="sm" onClick={onAction}>
+            {actionLabel}
+          </Button>
+        </div>
       )}
     </div>
   );
