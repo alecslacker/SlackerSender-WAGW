@@ -62,6 +62,7 @@ func createAIReplyConfig(db *gorm.DB) gin.HandlerFunc {
 			StrictFAQ       *bool  `json:"strictFaq"`
 			MaxReplyLength  int    `json:"maxReplyLength"`
 			ContextMessages *int   `json:"contextMessages"`
+			ReadImages      *bool  `json:"readImages"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Data tidak valid"})
@@ -96,7 +97,12 @@ func createAIReplyConfig(db *gorm.DB) gin.HandlerFunc {
 		if req.ContextMessages != nil {
 			contextMessages = *req.ContextMessages
 		}
+		readImages := false
+		if req.ReadImages != nil {
+			readImages = *req.ReadImages
+		}
 		cfg := models.AIReplyConfig{
+			ReadImages:      readImages,
 			UserID:          userID,
 			DeviceID:        req.DeviceID,
 			SystemPrompt:    req.SystemPrompt,

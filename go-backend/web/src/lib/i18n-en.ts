@@ -669,6 +669,8 @@ export default {
     useFaqHint: "Look up the FAQ first before asking the AI.",
     strictFaq: "Strict FAQ Mode",
     strictFaqHint: "If no FAQ matches, politely refuse without calling the AI.",
+    readImages: "Read Images",
+    readImagesHint: "The AI also reads images sent by customers (product photos, payment proofs, etc). The AI model you use must support images (vision); otherwise the AI replies from the caption only. Each image adds token usage. Pro/Master plans only.",
     maxReplyLength: "Max Reply Length",
     contextMessages: "Context (last messages)",
     chatbotProOnly: "The AI chatbot (FAQ + smart replies) is available on Pro/Master plans. Your current plan: {plan}.",

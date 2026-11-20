@@ -19,6 +19,7 @@ import (
 	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/config"
 	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
 	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/security"
+	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/service"
 	"gorm.io/gorm"
 )
 
@@ -46,23 +47,13 @@ func aiChatURL(db *gorm.DB) string {
 // AskAI mengirim systemPrompt + userMessage ke backend AI dan mengembalikan
 // teks balasan. Memakai format OpenAI chat completions dengan fallback
 // parsing untuk bentuk respon lain (reply/response/text/message).
-func AskAI(db *gorm.DB, systemPrompt, userMessage string) (string, error) {
+// images (opsional) menyertai pesan user — model backend harus mendukung vision.
+func AskAI(db *gorm.DB, systemPrompt, userMessage string, images ...service.ChatImage) (string, error) {
 	model := aiSetting(db, settingAIModel)
 	if model == "" {
 		model = config.AIDefaultModel()
 	}
-	payload := map[string]interface{}{
-		"model": model,
-		"messages": []map[string]string{
-			{"role": "system", "content": systemPrompt},
-			{"role": "user", "content": userMessage},
-		},
-		"max_tokens":  500,
-		"temperature": 0.7,
-		// 9router membalas SSE bila stream tidak diisi; kita butuh satu JSON utuh.
-		"stream": false,
-	}
-	body, err := json.Marshal(payload)
+	body, err := json.Marshal(buildAIPayload(model, systemPrompt, userMessage, images))
 	if err != nil {
 		return "", err
 	}
@@ -115,6 +106,22 @@ func AskAI(db *gorm.DB, systemPrompt, userMessage string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("respon AI kosong")
+}
+
+// buildAIPayload merangkai body chat completions untuk backend AI global.
+// Tanpa gambar, bentuknya identik dengan versi sebelum fitur vision.
+func buildAIPayload(model, systemPrompt, userMessage string, images []service.ChatImage) map[string]interface{} {
+	return map[string]interface{}{
+		"model": model,
+		"messages": service.OpenAIMessages([]service.ChatMessage{
+			{Role: "system", Content: systemPrompt},
+			{Role: "user", Content: userMessage, Images: images},
+		}),
+		"max_tokens":  500,
+		"temperature": 0.7,
+		// 9router membalas SSE bila stream tidak diisi; kita butuh satu JSON utuh.
+		"stream": false,
+	}
 }
 
 // AICheckHealth memeriksa konektivitas ke backend AI via /api/health

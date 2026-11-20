@@ -21,6 +21,7 @@ interface AIReplyConfig {
   injectionGuard: boolean;
   useFaq: boolean;
   strictFaq: boolean;
+  readImages: boolean;
   maxReplyLength: number;
   contextMessages: number;
   createdAt: string;
@@ -100,6 +101,7 @@ export default function AIReply({ embedded = false }: { embedded?: boolean }) {
   const [injectionGuard, setInjectionGuard] = useState(true);
   const [useFaq, setUseFaq] = useState(true);
   const [strictFaq, setStrictFaq] = useState(false);
+  const [readImages, setReadImages] = useState(false);
   const [maxReplyLength, setMaxReplyLength] = useState(1000);
   const [contextMessages, setContextMessages] = useState(10);
   const [isEnabled, setIsEnabled] = useState(true);
@@ -164,6 +166,7 @@ export default function AIReply({ embedded = false }: { embedded?: boolean }) {
     setInjectionGuard(c?.injectionGuard ?? true);
     setUseFaq(c?.useFaq ?? true);
     setStrictFaq(c?.strictFaq ?? false);
+    setReadImages(c?.readImages ?? false);
     setMaxReplyLength(c?.maxReplyLength || 1000);
     setContextMessages(c?.contextMessages ?? 10);
     setIsEnabled(c?.isEnabled ?? true);
@@ -182,6 +185,7 @@ export default function AIReply({ embedded = false }: { embedded?: boolean }) {
         injectionGuard,
         useFaq,
         strictFaq,
+        readImages,
         maxReplyLength: Math.max(100, Math.min(4000, maxReplyLength || 1000)),
         contextMessages: Math.max(0, Math.min(20, contextMessages || 0)),
         ...(editing ? { isEnabled } : {}),
@@ -532,6 +536,13 @@ export default function AIReply({ embedded = false }: { embedded?: boolean }) {
                 <p className="text-xs text-muted-foreground">{t("aiReply.strictFaqHint")}</p>
               </div>
               <Toggle checked={strictFaq} label={t("aiReply.strictFaq")} onToggle={setStrictFaq} />
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium">{t("aiReply.readImages")}</p>
+                <p className="text-xs text-muted-foreground">{t("aiReply.readImagesHint")}</p>
+              </div>
+              <Toggle checked={readImages} label={t("aiReply.readImages")} onToggle={setReadImages} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

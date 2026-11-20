@@ -943,11 +943,11 @@ func (m *Manager) handleIncomingMessage(sess *SessionState, msg *events.Message)
 	// tidak menerima dua balasan sekaligus; AI menjadi fallback bila tak ada rule yang cocok.
 	if !menuHandled && !catalogHandled {
 		if msg.Info.IsGroup {
-			go m.checkAIReply(sess, senderJID, senderPhone, text, true)
+			go m.checkAIReply(sess, senderJID, senderPhone, text, true, msg)
 		} else if m.findAutoReplyRule(sess, text) != nil {
 			go m.checkAutoReply(sess, senderJID, senderPhone, text)
 		} else {
-			go m.checkAIReply(sess, senderJID, senderPhone, text, false)
+			go m.checkAIReply(sess, senderJID, senderPhone, text, false, msg)
 		}
 	}
 

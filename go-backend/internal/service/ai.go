@@ -145,6 +145,10 @@ func (s *AIService) apiKeyFor(p AIProvider) string {
 type ChatMessage struct {
 	Role    string `json:"role"` // system, user, assistant
 	Content string `json:"content"`
+	// Images: gambar yang menyertai pesan (vision). json:"-" agar pemakai lama
+	// yang meng-marshal ChatMessage langsung tetap menghasilkan body yang sama;
+	// rangkaian per provider ada di ai_vision.go.
+	Images []ChatImage `json:"-"`
 }
 
 // ChatRequest holds parameters for AI completion
@@ -245,7 +249,7 @@ func (s *AIService) completeOpenAICompatible(req ChatRequest) (*ChatResponse, er
 func (s *AIService) postChatCompletions(url, key, model string, messages []ChatMessage, maxTokens int, temp float64) (*ChatResponse, error) {
 	body := map[string]interface{}{
 		"model":       model,
-		"messages":    messages,
+		"messages":    OpenAIMessages(messages),
 		"max_tokens":  maxTokens,
 		"temperature": temp,
 	}
@@ -374,19 +378,8 @@ func (s *AIService) completeAnthropic(req ChatRequest) (*ChatResponse, error) {
 		maxTokens = 500
 	}
 
-	// Extract system message
-	systemMsg := ""
-	messages := []map[string]string{}
-	for _, m := range req.Messages {
-		if m.Role == "system" {
-			systemMsg = m.Content
-		} else {
-			messages = append(messages, map[string]string{
-				"role":    m.Role,
-				"content": m.Content,
-			})
-		}
-	}
+	// Pisahkan system message; pesan bergambar dirangkai di ai_vision.go.
+	systemMsg, messages := anthropicMessages(req.Messages)
 
 	body := map[string]interface{}{
 		"model":      model,
@@ -462,8 +455,8 @@ func (s *AIService) completeGemini(req ChatRequest) (*ChatResponse, error) {
 		Text string `json:"text"`
 	}
 	type content struct {
-		Role  string `json:"role,omitempty"`
-		Parts []part `json:"parts"`
+		Role  string        `json:"role,omitempty"`
+		Parts []interface{} `json:"parts"`
 	}
 	var systemText string
 	var contents []content
@@ -476,9 +469,9 @@ func (s *AIService) completeGemini(req ChatRequest) (*ChatResponse, error) {
 				systemText += "\n" + m.Content
 			}
 		case "assistant":
-			contents = append(contents, content{Role: "model", Parts: []part{{Text: m.Content}}})
+			contents = append(contents, content{Role: "model", Parts: geminiParts(m)})
 		default:
-			contents = append(contents, content{Role: "user", Parts: []part{{Text: m.Content}}})
+			contents = append(contents, content{Role: "user", Parts: geminiParts(m)})
 		}
 	}
 

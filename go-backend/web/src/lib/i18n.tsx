@@ -683,6 +683,8 @@ const id = {
     useFaqHint: "Cari jawaban di FAQ dulu sebelum bertanya ke AI.",
     strictFaq: "Mode Ketat FAQ",
     strictFaqHint: "Bila tidak ada FAQ yang cocok, tolak sopan tanpa memanggil AI.",
+    readImages: "Baca Gambar",
+    readImagesHint: "AI ikut membaca gambar yang dikirim pelanggan (foto produk, bukti transfer, dll). Model AI yang dipakai harus mendukung gambar (vision); bila tidak, AI membalas dari caption saja. Setiap gambar menambah pemakaian token. Hanya paket Pro/Master.",
     maxReplyLength: "Batas Panjang Jawaban",
     contextMessages: "Konteks (pesan terakhir)",
     chatbotProOnly: "Chatbot AI (FAQ + jawaban pintar) tersedia di paket Pro/Master. Paket Anda saat ini: {plan}.",
