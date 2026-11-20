@@ -22,6 +22,7 @@ interface AIReplyConfig {
   useFaq: boolean;
   strictFaq: boolean;
   readImages: boolean;
+  webSearch: boolean;
   maxReplyLength: number;
   contextMessages: number;
   createdAt: string;
@@ -61,6 +62,7 @@ interface AIStatus {
   configured?: boolean;
   provider?: string;
   model?: string;
+  webSearchSupported?: boolean;
 }
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
@@ -102,6 +104,7 @@ export default function AIReply({ embedded = false }: { embedded?: boolean }) {
   const [useFaq, setUseFaq] = useState(true);
   const [strictFaq, setStrictFaq] = useState(false);
   const [readImages, setReadImages] = useState(false);
+  const [webSearch, setWebSearch] = useState(false);
   const [maxReplyLength, setMaxReplyLength] = useState(1000);
   const [contextMessages, setContextMessages] = useState(10);
   const [isEnabled, setIsEnabled] = useState(true);
@@ -167,6 +170,7 @@ export default function AIReply({ embedded = false }: { embedded?: boolean }) {
     setUseFaq(c?.useFaq ?? true);
     setStrictFaq(c?.strictFaq ?? false);
     setReadImages(c?.readImages ?? false);
+    setWebSearch(c?.webSearch ?? false);
     setMaxReplyLength(c?.maxReplyLength || 1000);
     setContextMessages(c?.contextMessages ?? 10);
     setIsEnabled(c?.isEnabled ?? true);
@@ -186,6 +190,7 @@ export default function AIReply({ embedded = false }: { embedded?: boolean }) {
         useFaq,
         strictFaq,
         readImages,
+        webSearch,
         maxReplyLength: Math.max(100, Math.min(4000, maxReplyLength || 1000)),
         contextMessages: Math.max(0, Math.min(20, contextMessages || 0)),
         ...(editing ? { isEnabled } : {}),
@@ -543,6 +548,27 @@ export default function AIReply({ embedded = false }: { embedded?: boolean }) {
                 <p className="text-xs text-muted-foreground">{t("aiReply.readImagesHint")}</p>
               </div>
               <Toggle checked={readImages} label={t("aiReply.readImages")} onToggle={setReadImages} />
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium">{t("aiReply.webSearch")}</p>
+                <p className="text-xs text-muted-foreground">{t("aiReply.webSearchHint")}</p>
+                {status?.webSearchSupported === false && (
+                  <p className="mt-1 text-xs text-amber-500">{t("aiReply.webSearchUnsupported")}</p>
+                )}
+              </div>
+              {/* Provider tak mendukung: toggle BOLEH dimatikan (agar nilai lama
+                  tidak menyala diam-diam saat pindah ke Z.AI/Anthropic), tapi tidak
+                  bisa dinyalakan. */}
+              <Toggle
+                checked={webSearch}
+                label={t("aiReply.webSearch")}
+                onToggle={(v) => {
+                  if (v && status?.webSearchSupported === false) return;
+                  setWebSearch(v);
+                }}
+                disabled={status?.webSearchSupported === false && !webSearch}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

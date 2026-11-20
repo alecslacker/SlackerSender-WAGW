@@ -168,6 +168,13 @@ type ChatRequest struct {
 	// apa adanya ke provider OpenAI-compatible. Kosong = tidak dikirim.
 	// Lihat ReasoningEffortFor untuk kapan aman dipakai.
 	ReasoningEffort string
+	// WebSearch: izinkan pencarian web bawaan provider (ai_websearch.go).
+	// Diabaikan provider yang tidak didukung (lihat WebSearchSupported).
+	WebSearch bool
+	// DowngradeMessages (opsional): pesan pengganti yang dipakai CompleteTolerant
+	// saat mengulang tanpa fitur tambahan — mis. system prompt tanpa kalimat
+	// "alat pencarian tersedia" agar model tak mengaku mencari padahal tidak.
+	DowngradeMessages []ChatMessage
 }
 
 // ChatResponse holds the AI response
@@ -178,6 +185,13 @@ type ChatResponse struct {
 	// dipakai untuk menjelaskan jawaban kosong (lihat EmptyHint).
 	FinishReason string
 	Reasoning    bool // respons membawa reasoning_content (model berpikir)
+	// Searched: provider benar-benar mencari di web; Sources: label situs
+	// sumber (untuk log, tidak dikirim ke pelanggan).
+	Searched bool
+	Sources  []string
+	// Downgraded: provider menolak request berfitur tambahan (HTTP 400) lalu
+	// CompleteTolerant mengulang tanpa reasoning_effort & pencarian web.
+	Downgraded bool
 }
 
 // EmptyHint menjelaskan kemungkinan sebab jawaban kosong untuk log/diagnosis.
@@ -209,13 +223,21 @@ func ReasoningEffortFor(p AIProvider, model string) string {
 }
 
 // CompleteTolerant memanggil Complete; bila provider menolak (HTTP 400) request
-// yang membawa ReasoningEffort, ulangi SEKALI tanpa field itu — jaring pengaman
-// bila provider/model tak mengenal field tersebut, agar balasan tak hilang.
+// yang membawa fitur tambahan (ReasoningEffort / WebSearch), ulangi SEKALI
+// tanpa keduanya — jaring pengaman bila provider/model tak mengenal fitur itu,
+// agar balasan tak hilang. Hasil ulangan ditandai Downgraded.
 func (s *AIService) CompleteTolerant(req ChatRequest) (*ChatResponse, error) {
 	resp, err := s.Complete(req)
-	if err != nil && req.ReasoningEffort != "" && strings.Contains(err.Error(), "AI error 400") {
+	if isBadRequest(err) && (req.ReasoningEffort != "" || req.WebSearch) {
 		req.ReasoningEffort = ""
-		return s.Complete(req)
+		req.WebSearch = false
+		if req.DowngradeMessages != nil {
+			req.Messages = req.DowngradeMessages
+		}
+		resp, err = s.Complete(req)
+		if resp != nil {
+			resp.Downgraded = true
+		}
 	}
 	return resp, err
 }
@@ -296,9 +318,13 @@ func (s *AIService) completeOpenAICompatible(req ChatRequest) (*ChatResponse, er
 	if model == "" {
 		model = "default"
 	}
-	var extra map[string]interface{}
+	extra := map[string]interface{}{}
 	if req.ReasoningEffort != "" {
-		extra = map[string]interface{}{"reasoning_effort": req.ReasoningEffort}
+		extra["reasoning_effort"] = req.ReasoningEffort
+	}
+	// Pencarian web hanya untuk Z.AI (proxy lain belum tentu meneruskan tools).
+	if req.WebSearch && req.Provider == ProviderZAI {
+		extra["tools"] = zaiWebSearchTool()
 	}
 	return s.postChatCompletions(base+"/chat/completions", key, model, req.Messages, maxTokens, temp, extra)
 }
@@ -352,6 +378,10 @@ func (s *AIService) postChatCompletions(url, key, model string, messages []ChatM
 		Usage struct {
 			TotalTokens int `json:"total_tokens"`
 		} `json:"usage"`
+		// Hasil pencarian web Z.AI (level atas respons). RawMessage agar bentuk
+		// tak terduga (objek, string) dari proxy/provider lain TIDAK memecahkan
+		// decode jawaban normal; diurai toleran di bawah.
+		WebSearch json.RawMessage `json:"web_search"`
 	}
 	// Decoder (bukan json.Unmarshal): sebagian proxy (mis. 9router) mengirim satu
 	// objek chat.completion utuh LALU ekor SSE ("data: [DONE]"). Unmarshal menolak
@@ -366,12 +396,25 @@ func (s *AIService) postChatCompletions(url, key, model string, messages []ChatM
 	}
 
 	c := result.Choices[0]
-	return &ChatResponse{
+	out := &ChatResponse{
 		Content:      c.Message.Content,
 		Tokens:       result.Usage.TotalTokens,
 		FinishReason: c.FinishReason,
 		Reasoning:    strings.TrimSpace(c.Message.ReasoningContent) != "",
-	}, nil
+	}
+	var hits []struct {
+		Title string `json:"title"`
+		Link  string `json:"link"`
+		Media string `json:"media"`
+	}
+	// Bukan array / gagal diurai -> abaikan (tak mencari), jawaban tetap utuh.
+	if len(result.WebSearch) > 0 && json.Unmarshal(result.WebSearch, &hits) == nil {
+		out.Searched = len(hits) > 0
+		for _, w := range hits {
+			out.Sources = addSource(out.Sources, w.Media, w.Link, w.Title)
+		}
+	}
+	return out, nil
 }
 
 // looksLikeSSE melaporkan apakah body tampak seperti Server-Sent Events.
@@ -470,6 +513,9 @@ func (s *AIService) completeAnthropic(req ChatRequest) (*ChatResponse, error) {
 	if systemMsg != "" {
 		body["system"] = systemMsg
 	}
+	if req.WebSearch {
+		body["tools"] = anthropicWebSearchTool()
+	}
 
 	jsonBody, _ := json.Marshal(body)
 	httpReq, _ := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewReader(jsonBody))
@@ -488,27 +534,8 @@ func (s *AIService) completeAnthropic(req ChatRequest) (*ChatResponse, error) {
 		return nil, fmt.Errorf("Anthropic error %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	var result struct {
-		Content []struct {
-			Text string `json:"text"`
-		} `json:"content"`
-		Usage struct {
-			InputTokens  int `json:"input_tokens"`
-			OutputTokens int `json:"output_tokens"`
-		} `json:"usage"`
-	}
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse Anthropic response: %w", err)
-	}
-
-	if len(result.Content) == 0 {
-		return nil, fmt.Errorf("Anthropic returned no content")
-	}
-
-	return &ChatResponse{
-		Content: result.Content[0].Text,
-		Tokens:  result.Usage.InputTokens + result.Usage.OutputTokens,
-	}, nil
+	// Gabung semua blok teks (respons pencarian web terpecah ke banyak blok).
+	return parseAnthropicResponse(respBody)
 }
 
 // completeGemini memanggil Google Generative Language API (generateContent).

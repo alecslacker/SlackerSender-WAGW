@@ -63,6 +63,7 @@ func createAIReplyConfig(db *gorm.DB) gin.HandlerFunc {
 			MaxReplyLength  int    `json:"maxReplyLength"`
 			ContextMessages *int   `json:"contextMessages"`
 			ReadImages      *bool  `json:"readImages"`
+			WebSearch       *bool  `json:"webSearch"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Data tidak valid"})
@@ -101,8 +102,13 @@ func createAIReplyConfig(db *gorm.DB) gin.HandlerFunc {
 		if req.ReadImages != nil {
 			readImages = *req.ReadImages
 		}
+		webSearch := false
+		if req.WebSearch != nil {
+			webSearch = *req.WebSearch
+		}
 		cfg := models.AIReplyConfig{
 			ReadImages:      readImages,
+			WebSearch:       webSearch,
 			UserID:          userID,
 			DeviceID:        req.DeviceID,
 			SystemPrompt:    req.SystemPrompt,
@@ -202,15 +208,18 @@ func aiReplyStatus(db *gorm.DB) gin.HandlerFunc {
 				"configured": true,
 				"provider":   conn.Provider,
 				"model":      conn.Model,
-				"detail":     "Koneksi AI milik Anda (" + conn.Provider + " / " + conn.Model + ")",
+				// UI menonaktifkan toggle "Cari di Web" bila provider tak mendukung.
+				"webSearchSupported": service.WebSearchSupported(service.AIProvider(conn.Provider)),
+				"detail":             "Koneksi AI milik Anda (" + conn.Provider + " / " + conn.Model + ")",
 			})
 			return
 		}
 		ok, detail := whatsapp.AICheckHealth(db)
 		c.JSON(http.StatusOK, gin.H{
-			"reachable":  ok,
-			"configured": false,
-			"detail":     detail,
+			"reachable":          ok,
+			"configured":         false,
+			"webSearchSupported": false, // backend AI global tidak diberi pencarian web
+			"detail":             detail,
 		})
 	}
 }

@@ -198,7 +198,11 @@ func (m *Manager) replyChatbot(sess *SessionState, senderJID, senderPhone, text 
 			m.replyImageUnreadable(sess, senderJID, senderPhone, question)
 			return
 		}
-		reply, err = m.askAIWithHistory(sess.UserID, cfg, history, text, nil)
+		// Ulangan tanpa gambar juga TANPA pencarian: satu pesan pelanggan tidak
+		// boleh memicu dua kali pencarian berbiaya.
+		retryCfg := *cfg
+		retryCfg.WebSearch = false
+		reply, err = m.askAIWithHistory(sess.UserID, &retryCfg, history, text, nil)
 	}
 	if err != nil {
 		log.Error().Err(err).
@@ -238,7 +242,11 @@ func matchTriggerKeywords(text, keywords string) bool {
 // Bila cfg.InjectionGuard aktif: system prompt diperkuat akhiran keamanan dan
 // pesan user dibungkus sebagai data eksplisit.
 func (m *Manager) askAIForUser(userID uint, cfg *models.AIReplyConfig, userMessage string) (string, error) {
-	return m.askAIWithHistory(userID, cfg, nil, userMessage, nil)
+	// Jalur paket non-Pro/Master: tanpa gambar dan TANPA pencarian web (fitur
+	// berbiaya itu hanya untuk chatbot Pro/Master) — salin config, jangan ubah aslinya.
+	legacy := *cfg
+	legacy.WebSearch = false
+	return m.askAIWithHistory(userID, &legacy, nil, userMessage, nil)
 }
 
 // composeAIPrompt menyusun system prompt + pesan user untuk LLM.
@@ -267,24 +275,52 @@ func composeAIPrompt(systemPrompt, userText string, injectionGuard, withImage bo
 // agar diterima semua provider.
 func (m *Manager) askAIWithHistory(userID uint, cfg *models.AIReplyConfig, history []service.ChatMessage, userMessage string, images []service.ChatImage) (string, error) {
 	systemPrompt, guardedMsg := composeAIPrompt(cfg.SystemPrompt, userMessage, cfg.InjectionGuard, len(images) > 0)
-	messages := []service.ChatMessage{{Role: "system", Content: systemPrompt}}
-	messages = append(messages, service.NormalizeChatHistory(history)...)
-	messages = append(messages, service.ChatMessage{Role: "user", Content: guardedMsg, Images: images})
+	build := func(system string) []service.ChatMessage {
+		msgs := []service.ChatMessage{{Role: "system", Content: system}}
+		msgs = append(msgs, service.NormalizeChatHistory(history)...)
+		return append(msgs, service.ChatMessage{Role: "user", Content: guardedMsg, Images: images})
+	}
 
 	if conn := service.ConnectionForUser(m.db, userID); conn != nil {
 		if svc := service.ServiceForConnection(conn); svc != nil {
 			provider := service.AIProvider(conn.Provider)
 			model := service.EffectiveModel(conn, "")
-			resp, err := svc.CompleteTolerant(service.ChatRequest{
+			// Pencarian web hanya bila config memintanya DAN provider mendukung
+			// (Z.AI/Anthropic); selain itu diabaikan, jawaban tetap dari model.
+			webSearch := cfg.WebSearch && service.WebSearchSupported(provider)
+			if cfg.WebSearch && !webSearch {
+				log.Warn().Uint("userID", userID).Str("provider", conn.Provider).
+					Msg("Cari di Web aktif tetapi provider tidak mendukung — diabaikan")
+			}
+			sys := systemPrompt
+			if webSearch {
+				sys = service.WithWebSearchGuard(systemPrompt)
+			}
+			req := service.ChatRequest{
 				Provider:        provider,
 				Model:           model,
-				Messages:        messages,
+				Messages:        build(sys),
 				MaxTokens:       service.AIReplyMaxTokens,
 				Temperature:     0.7,
 				ReasoningEffort: service.ReasoningEffortFor(provider, model),
-			})
+				WebSearch:       webSearch,
+			}
+			if webSearch {
+				// Bila provider menolak tools dan kita mengulang tanpa pencarian,
+				// pakai system prompt TANPA kalimat "alat pencarian tersedia".
+				req.DowngradeMessages = build(systemPrompt)
+			}
+			resp, err := svc.CompleteTolerant(req)
 			if err != nil {
 				return "", err
+			}
+			if resp.Downgraded {
+				log.Warn().Uint("userID", userID).Str("provider", conn.Provider).Str("model", model).
+					Msg("Provider menolak fitur tambahan (pencarian web/reasoning_effort) — dijawab tanpa fitur itu")
+			} else if webSearch {
+				log.Info().Uint("userID", userID).Str("provider", conn.Provider).Str("model", model).
+					Bool("mencari", resp.Searched).Strs("sumber", resp.Sources).
+					Msg("AI Reply dengan Cari di Web")
 			}
 			// Jawaban kosong jangan hilang diam-diam: catat sebabnya (mis. model
 			// reasoning menghabiskan token untuk berpikir).

@@ -27,6 +27,9 @@ type AIReplyConfig struct {
 	// ReadImages: AI ikut membaca gambar masuk (vision). Opt-in — model AI yang
 	// dipakai harus mendukung gambar. Hanya berlaku di jalur chatbot Pro/Master.
 	ReadImages      bool `gorm:"default:false" json:"readImages"`
+	// WebSearch: AI boleh mencari di internet sebelum menjawab (pencarian bawaan
+	// provider — Z.AI/Gemini/Anthropic; lihat service.WebSearchSupported). Opt-in.
+	WebSearch       bool `gorm:"default:false" json:"webSearch"`
 	CreatedAt       time.Time      `json:"createdAt"`
 	UpdatedAt       time.Time      `json:"updatedAt"`
 	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`
