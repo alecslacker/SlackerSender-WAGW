@@ -57,11 +57,19 @@ func TestParseSearchResponsePerPenyedia(t *testing.T) {
 		nama, prov, body string
 		domain, title    string
 	}{
-		{"Z.AI", SearchZAI,
+		{"Z.AI REST", SearchZAI,
 			`{"search_result":[{"title":"Z","link":"https://www.detik.com/a","content":"ringkas z","media":"detikcom"}]}`,
 			"detik.com", "Z"},
 		{"Z.AI snippet", SearchZAI,
 			`{"search_result":[{"title":"Z","link":"https://a.com","snippet":"s"}]}`, "a.com", "Z"},
+		{"Z.AI MCP array", SearchZAI,
+			`[{"title":"M","link":"https://www.kompas.com/x","content":"isi m","refer":"ref_1"}]`, "kompas.com", "M"},
+		{"Z.AI MCP url+summary", SearchZAI,
+			`[{"title":"M","url":"https://b.com","summary":"ringkas"}]`, "b.com", "M"},
+		{"Z.AI MCP dienkode dua kali", SearchZAI,
+			`"[{\"title\":\"D\",\"link\":\"https://c.com\",\"content\":\"dua kali\"}]"`, "c.com", "D"},
+		{"Z.AI MCP objek results", SearchZAI,
+			`{"results":[{"title":"R","link":"https://d.com","content":"x"}]}`, "d.com", "R"},
 		{"Brave", SearchBrave,
 			`{"web":{"results":[{"title":"B","url":"https://www.bbc.com/x","description":"desk b"}]}}`,
 			"bbc.com", "B"},
@@ -80,6 +88,17 @@ func TestParseSearchResponsePerPenyedia(t *testing.T) {
 				t.Errorf("salah baca: %+v", res[0])
 			}
 		})
+	}
+}
+
+func TestParseZAIBentukAsingBukanKosong(t *testing.T) {
+	// Teks bebas / bukan JSON harus galat "tak terbaca", BUKAN ErrSearchEmpty
+	// (kosong = vonis "tidak bekerja"; tak terbaca = belum bisa dipastikan).
+	for _, body := range []string{`Berikut hasilnya: ...`, `12345`, `"bukan json di dalam"`} {
+		_, err := parseSearchResponse(SearchZAI, []byte(body))
+		if err == nil || errors.Is(err, ErrSearchEmpty) {
+			t.Errorf("%q: harus galat tak terbaca, dapat %v", body, err)
+		}
 	}
 }
 

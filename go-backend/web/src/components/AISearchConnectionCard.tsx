@@ -36,7 +36,7 @@ interface SearchTest {
 
 const PROVIDERS = [
   { value: "brave", label: "Brave Search" },
-  { value: "zai", label: "Z.ai Web Search" },
+  { value: "zai", label: "Z.ai Coding Plan (MCP)" },
   { value: "searxng", label: "SearXNG (instance sendiri)" },
 ];
 
@@ -211,7 +211,11 @@ export default function AISearchConnectionCard({ onChanged }: { onChanged?: () =
               </div>
             )}
             <p className="sm:col-span-2 text-[11px] text-muted-foreground">
-              {isSearx ? t("aiReply.searchSearxHint") : t("aiReply.searchKeyHint")}
+              {isSearx
+                ? t("aiReply.searchSearxHint")
+                : provider === "zai"
+                  ? t("aiReply.searchZaiHint")
+                  : t("aiReply.searchKeyHint")}
             </p>
           </div>
         )}

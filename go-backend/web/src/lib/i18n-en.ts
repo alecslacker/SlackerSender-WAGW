@@ -691,6 +691,7 @@ export default {
     searchApiKey: "Search provider API key",
     searchBaseUrl: "SearXNG instance URL",
     searchKeyHint: "The key is stored encrypted and never shown again.",
+    searchZaiHint: "Use your GLM Coding Plan API key (MCP web_search_prime route): usage is deducted from plan credits. A key with no active plan or balance is rejected (error 1113).",
     searchSearxHint: "Must be your own instance at a public address (JSON format must be enabled). Private-network/localhost addresses are rejected for security.",
     searchSaved: "Search connection saved",
     searchDelete: "Delete search connection",

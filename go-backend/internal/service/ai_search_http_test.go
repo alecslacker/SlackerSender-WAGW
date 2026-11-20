@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -42,29 +41,6 @@ func newTestSearcher(t *testing.T, cfg SearcherConfig, srv *httptest.Server) Sea
 		t.Fatal(err)
 	}
 	return s
-}
-
-func TestSearchZAIRequest(t *testing.T) {
-	srv, c := searchServer(t, 200, `{"search_result":[{"title":"T","link":"https://a.com","content":"isi"}]}`)
-	s := newTestSearcher(t, SearcherConfig{Provider: SearchZAI, APIKey: "KUNCI"}, srv)
-	res, err := s.Search(context.Background(), "  harga emas hari ini ")
-	if err != nil || len(res) != 1 {
-		t.Fatalf("res=%v err=%v", res, err)
-	}
-	if c.method != http.MethodPost || c.header.Get("Authorization") != "Bearer KUNCI" {
-		t.Errorf("method/auth salah: %s %q", c.method, c.header.Get("Authorization"))
-	}
-	var b map[string]interface{}
-	if err := json.Unmarshal(c.body, &b); err != nil {
-		t.Fatal(err)
-	}
-	if b["search_query"] != "harga emas hari ini" || b["count"] != float64(maxSearchResults) {
-		t.Errorf("body salah: %s", c.body)
-	}
-	// Z.AI menolak (error 1214) bila search_engine kosong — harus selalu terkirim.
-	if b["search_engine"] != "search-prime" {
-		t.Errorf("search_engine harus search-prime: %s", c.body)
-	}
 }
 
 func TestSearchBraveRequest(t *testing.T) {

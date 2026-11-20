@@ -18,10 +18,8 @@ import (
 )
 
 const (
-	zaiSearchURL    = "https://api.z.ai/api/paas/v4/web_search"
-	zaiSearchEngine = "search-prime"
-	braveSearchURL  = "https://api.search.brave.com/res/v1/web/search"
-	searchBodyMax   = 1 << 20 // 1 MB
+	braveSearchURL = "https://api.search.brave.com/res/v1/web/search"
+	searchBodyMax  = 1 << 20 // 1 MB
 )
 
 // SearcherConfig: konfigurasi satu penyedia. BaseURL hanya untuk SearXNG; untuk
@@ -72,17 +70,9 @@ func (h *httpSearcher) Search(ctx context.Context, query string) ([]SearchResult
 	)
 	switch h.cfg.Provider {
 	case SearchZAI:
-		// search_engine WAJIB (tanpa ini Z.AI menolak: error 1214 "search_engine cannot
-		// both be empty" — terbukti lewat Cek Pencarian live). Dokumen resmi:
-		// satu-satunya nilai yang tersedia adalah "search-prime".
-		body, _ := json.Marshal(map[string]interface{}{
-			"search_engine": zaiSearchEngine, "search_query": query, "count": maxSearchResults,
-		})
-		req, err = http.NewRequestWithContext(ctx, http.MethodPost, h.endpoint(zaiSearchURL), bytes.NewReader(body))
-		if err == nil {
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Authorization", "Bearer "+h.cfg.APIKey)
-		}
+		// Z.AI lewat server MCP web_search_prime (jalur GLM Coding Plan, kuota paket).
+		// REST /paas/v4/web_search sengaja tidak dipakai: ia memotong saldo API biasa.
+		return h.searchZAIMCP(ctx, query)
 	case SearchBrave:
 		q := url.Values{"q": {query}, "count": {fmt.Sprint(maxSearchResults)}}
 		req, err = http.NewRequestWithContext(ctx, http.MethodGet, h.endpoint(braveSearchURL)+"?"+q.Encode(), nil)
@@ -125,20 +115,23 @@ func parseSearchResponse(provider string, raw []byte) ([]SearchResult, error) {
 	var out []SearchResult
 	switch provider {
 	case SearchZAI:
-		var r struct {
-			Results []struct {
-				Title, Link, Snippet, Content, Media string
-			} `json:"search_result"`
+		items, err := zaiItems(raw)
+		if err != nil {
+			return nil, err
 		}
-		if err := json.Unmarshal(raw, &r); err != nil {
-			return nil, fmt.Errorf("respons Z.AI tidak dapat dibaca")
-		}
-		for _, x := range r.Results {
+		for _, x := range items {
+			link := x.Link
+			if link == "" {
+				link = x.URL
+			}
 			s := x.Snippet
 			if s == "" {
 				s = x.Content
 			}
-			if n, ok := normalizeResult(x.Title, x.Link, s, x.Media); ok {
+			if s == "" {
+				s = x.Summary
+			}
+			if n, ok := normalizeResult(x.Title, link, s, x.Media); ok {
 				out = append(out, n)
 			}
 		}
@@ -176,4 +169,46 @@ func parseSearchResponse(provider string, raw []byte) ([]SearchResult, error) {
 		return nil, ErrSearchEmpty
 	}
 	return out, nil
+}
+
+type zaiItem struct {
+	Title, Link, URL, Snippet, Content, Summary, Media string
+}
+
+// zaiItems membaca hasil Z.AI dalam bentuk yang diketahui/dilaporkan: array objek,
+// objek berisi search_result/results, dan teks MCP yang dienkode JSON dua kali
+// (string yang isinya JSON). Bentuk lain -> galat jelas (bukan "kosong").
+func zaiItems(raw []byte) ([]zaiItem, error) {
+	b := bytes.TrimSpace(raw)
+	for depth := 0; depth < 3 && len(b) > 0; depth++ {
+		switch b[0] {
+		case '"': // JSON string yang membungkus JSON lain
+			var s string
+			if err := json.Unmarshal(b, &s); err != nil {
+				return nil, fmt.Errorf("respons Z.AI tidak dapat dibaca")
+			}
+			b = bytes.TrimSpace([]byte(s))
+		case '[':
+			var items []zaiItem
+			if err := json.Unmarshal(b, &items); err != nil {
+				return nil, fmt.Errorf("respons Z.AI tidak dapat dibaca")
+			}
+			return items, nil
+		case '{':
+			var obj struct {
+				SearchResult []zaiItem `json:"search_result"`
+				Results      []zaiItem `json:"results"`
+			}
+			if err := json.Unmarshal(b, &obj); err != nil {
+				return nil, fmt.Errorf("respons Z.AI tidak dapat dibaca")
+			}
+			if len(obj.SearchResult) > 0 {
+				return obj.SearchResult, nil
+			}
+			return obj.Results, nil
+		default:
+			return nil, fmt.Errorf("respons Z.AI tidak dapat dibaca (bukan JSON)")
+		}
+	}
+	return nil, fmt.Errorf("respons Z.AI tidak dapat dibaca")
 }

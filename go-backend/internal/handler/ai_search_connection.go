@@ -282,6 +282,9 @@ func classifySearchProbe(results []service.SearchResult, err error) (string, str
 func friendlySearchError(err error) string {
 	l := strings.ToLower(err.Error())
 	switch {
+	case strings.Contains(l, "1113") || strings.Contains(l, "insufficient balance"):
+		// Z.AI membalas 429 + kode 1113 bila kunci tak punya saldo/paket aktif — bukan rate limit.
+		return "Kunci tidak punya paket Coding Plan aktif atau saldo (Z.AI 1113). Periksa paket di panel Z.AI."
 	case strings.Contains(l, "search error 401") || strings.Contains(l, "search error 403"):
 		return "Kunci/akses ditolak penyedia pencarian. Periksa API key (SearXNG: format JSON harus dinyalakan di instance)."
 	case strings.Contains(l, "search error 429"):

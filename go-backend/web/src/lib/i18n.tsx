@@ -705,6 +705,7 @@ const id = {
     searchApiKey: "API Key penyedia pencarian",
     searchBaseUrl: "URL instance SearXNG",
     searchKeyHint: "Kunci disimpan terenkripsi dan tidak pernah ditampilkan kembali.",
+    searchZaiHint: "Pakai API key GLM Coding Plan Anda (jalur MCP web_search_prime): kuota dipotong dari kredit paket. Kunci tanpa paket aktif atau saldo akan ditolak (galat 1113).",
     searchSearxHint: "Wajib instance milik sendiri di alamat publik (format JSON harus dinyalakan). Alamat jaringan privat/localhost ditolak demi keamanan.",
     searchSaved: "Koneksi pencarian disimpan",
     searchDelete: "Hapus koneksi pencarian",

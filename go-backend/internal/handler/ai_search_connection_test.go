@@ -143,3 +143,11 @@ func TestFriendlySearchErrorTidakMembocorkanIsiBesar(t *testing.T) {
 		t.Errorf("429 harus ramah: %q", got)
 	}
 }
+
+func TestFriendlySearchErrorSaldoZAIBukanRateLimit(t *testing.T) {
+	err := errors.New(`search error 429: {"error":{"code":"1113","message":"Insufficient balance or no resource package. Please recharge."}}`)
+	msg := friendlySearchError(err)
+	if !strings.Contains(msg, "paket") || strings.Contains(msg, "batas penggunaan") {
+		t.Errorf("1113 harus dijelaskan sebagai paket/saldo, bukan rate limit: %q", msg)
+	}
+}
