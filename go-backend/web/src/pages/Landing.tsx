@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "wouter";
 import {
   Zap,
   ShieldCheck,
@@ -39,6 +38,21 @@ import {
   CircleHelp,
 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
+
+/* Link = anchor biasa (muat halaman penuh). Landing disajikan dari bundle
+ * terpisah (landing-entry.tsx) yang TIDAK punya <Route>; Link wouter hanya
+ * pushState sehingga URL berubah ke /login tapi layar tidak berganti. */
+function Link({
+  href,
+  children,
+  ...rest
+}: { href: string } & React.AnchorHTMLAttributes<HTMLAnchorElement>) {
+  return (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  );
+}
 
 /* ── Util: reveal on scroll ─────────────────────────── */
 /* Reveal: animasi scroll berbasis CSS class (bukan state) agar ramah prerender —
