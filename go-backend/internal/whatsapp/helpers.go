@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/security"
 	"go.mau.fi/whatsmeow/proto/waE2E"
@@ -218,11 +219,22 @@ func isScheduleActive(from, to string) bool {
 }
 
 // truncate limits string length
+//
+// Batas dihitung dalam byte, tetapi potongan mundur ke batas karakter: memotong
+// di tengah emoji/huruf multibyte menghasilkan UTF-8 tidak valid yang ditolak
+// PostgreSQL (SQLSTATE 22021) sehingga baris tak tersimpan.
 func truncate(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
 	}
-	return s[:maxLen]
+	if maxLen <= 0 {
+		return ""
+	}
+	cut := maxLen
+	for cut > 0 && !utf8.RuneStart(s[cut]) {
+		cut--
+	}
+	return s[:cut]
 }
 
 // ChatUploadsDir adalah direktori penyimpanan media Live Chat,

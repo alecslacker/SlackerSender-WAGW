@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/config"
 	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
@@ -337,11 +338,20 @@ func chatMediaLabel(msgType string) string {
 	}
 }
 
+// truncateStr memotong ke maksimal max byte, mundur ke batas karakter agar tidak
+// menghasilkan UTF-8 tidak valid (ditolak PostgreSQL, SQLSTATE 22021).
 func truncateStr(s string, max int) string {
 	if len(s) <= max {
 		return s
 	}
-	return s[:max]
+	if max <= 0 {
+		return ""
+	}
+	cut := max
+	for cut > 0 && !utf8.RuneStart(s[cut]) {
+		cut--
+	}
+	return s[:cut]
 }
 
 // resolveSenderJID mengembalikan JID lengkap tujuan kirim.
