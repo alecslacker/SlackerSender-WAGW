@@ -61,8 +61,9 @@ func TestSearchZAIRequest(t *testing.T) {
 	if b["search_query"] != "harga emas hari ini" || b["count"] != float64(maxSearchResults) {
 		t.Errorf("body salah: %s", c.body)
 	}
-	if _, ada := b["search_engine"]; ada {
-		t.Error("search_engine TIDAK boleh dikirim (docs Z.AI tak konsisten)")
+	// Z.AI menolak (error 1214) bila search_engine kosong — harus selalu terkirim.
+	if b["search_engine"] != "search-prime" {
+		t.Errorf("search_engine harus search-prime: %s", c.body)
 	}
 }
 

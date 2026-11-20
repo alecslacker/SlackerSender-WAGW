@@ -18,9 +18,10 @@ import (
 )
 
 const (
-	zaiSearchURL   = "https://api.z.ai/api/paas/v4/web_search"
-	braveSearchURL = "https://api.search.brave.com/res/v1/web/search"
-	searchBodyMax  = 1 << 20 // 1 MB
+	zaiSearchURL    = "https://api.z.ai/api/paas/v4/web_search"
+	zaiSearchEngine = "search-prime"
+	braveSearchURL  = "https://api.search.brave.com/res/v1/web/search"
+	searchBodyMax   = 1 << 20 // 1 MB
 )
 
 // SearcherConfig: konfigurasi satu penyedia. BaseURL hanya untuk SearXNG; untuk
@@ -71,11 +72,12 @@ func (h *httpSearcher) Search(ctx context.Context, query string) ([]SearchResult
 	)
 	switch h.cfg.Provider {
 	case SearchZAI:
-		// shortcut: jalur "/web_search" + bentuk respons search_result diambil dari
-		// SDK resmi; dokumen API menyebut dua nama mesin (search-prime vs
-		// search_pro_jina). Kita TIDAK mengirim search_engine bila kosong — wajib
-		// diuji nyata lewat "Cek Pencarian"; ganti bila Z.AI menolak.
-		body, _ := json.Marshal(map[string]interface{}{"search_query": query, "count": maxSearchResults})
+		// search_engine WAJIB (tanpa ini Z.AI menolak: error 1214 "search_engine cannot
+		// both be empty" — terbukti lewat Cek Pencarian live). Dokumen resmi:
+		// satu-satunya nilai yang tersedia adalah "search-prime".
+		body, _ := json.Marshal(map[string]interface{}{
+			"search_engine": zaiSearchEngine, "search_query": query, "count": maxSearchResults,
+		})
 		req, err = http.NewRequestWithContext(ctx, http.MethodPost, h.endpoint(zaiSearchURL), bytes.NewReader(body))
 		if err == nil {
 			req.Header.Set("Content-Type", "application/json")
