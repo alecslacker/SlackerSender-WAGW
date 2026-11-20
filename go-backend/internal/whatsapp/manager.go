@@ -42,7 +42,11 @@ type SessionState struct {
 	QRExpiry  time.Time
 	Client    *whatsmeow.Client
 	Container *sqlstore.Container
-	cancel    context.CancelFunc
+	// ctx dibatalkan oleh Disconnect/Logout/Connect-ulang. Goroutine startSession
+	// yang masih berjalan wajib memeriksanya (cancelled) agar tidak menyambungkan
+	// kembali sesi yang sudah diputus pengguna.
+	ctx    context.Context
+	cancel context.CancelFunc
 	// Flag perilaku device, di-cache dari DB (lihat deviceflags.go).
 	// Dibaca ulang saat sesi terhubung dan saat diubah via API.
 	AutoOnline      bool
@@ -50,6 +54,19 @@ type SessionState struct {
 	RejectCall      bool
 	TypingIndicator bool
 	mu              sync.RWMutex
+}
+
+// cancelled true bila sesi ini sudah dibatalkan (diputus / diganti sesi baru).
+func (s *SessionState) cancelled() bool {
+	return s.ctx != nil && s.ctx.Err() != nil
+}
+
+// done mengembalikan channel pembatalan; nil (blok selamanya) bila tanpa ctx.
+func (s *SessionState) done() <-chan struct{} {
+	if s.ctx == nil {
+		return nil
+	}
+	return s.ctx.Done()
 }
 
 // Manager coordinates all WhatsApp sessions
@@ -114,9 +131,17 @@ func (m *Manager) Connect(deviceID, userID uint) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Pengguna (atau retry loop) meminta konek: batalkan tanda stop manual
+	// Pengguna meminta konek: batalkan tanda stop manual dan retry loop lama.
+	// Retry loop otomatis TIDAK lewat sini (lihat reconnectWithBackoff) agar
+	// tidak menghapus tanda stop manual milik Disconnect.
 	delete(m.manualStop, deviceID)
+	m.retryGen[deviceID]++
 
+	return m.connectLocked(deviceID, userID)
+}
+
+// connectLocked memulai sesi baru; pemanggil wajib memegang m.mu.
+func (m *Manager) connectLocked(deviceID, userID uint) error {
 	// Check if already connecting/connected
 	if sess, exists := m.sessions[deviceID]; exists {
 		if sess.Status != "disconnected" {
@@ -131,10 +156,13 @@ func (m *Manager) Connect(deviceID, userID uint) error {
 		}
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	sess := &SessionState{
 		DeviceID: deviceID,
 		UserID:   userID,
 		Status:   "connecting",
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 	m.sessions[deviceID] = sess
 
@@ -202,6 +230,108 @@ func (m *Manager) Disconnect(deviceID uint) {
 	}
 
 	log.Info().Uint("deviceID", deviceID).Msg("WhatsApp session disconnected")
+}
+
+// Logout memutus DAN mencabut tautan perangkat dari WhatsApp (perangkat
+// hilang dari "Perangkat tertaut" di HP) lalu menghapus sesi lokal, sehingga
+// Hubungkan berikutnya wajib scan QR / kode pairing. Beda dengan Disconnect
+// yang hanya menutup koneksi dan mempertahankan sesi.
+// Bila server WhatsApp tak terjangkau, sesi lokal tetap dihapus dan error
+// pencabutan dikembalikan sebagai peringatan (perangkat perlu dihapus manual di HP).
+func (m *Manager) Logout(deviceID uint) error {
+	m.mu.Lock()
+	m.manualStop[deviceID] = true
+	m.retryGen[deviceID]++
+	sess := m.sessions[deviceID]
+	m.mu.Unlock()
+
+	var client *whatsmeow.Client
+	var container *sqlstore.Container
+	if sess != nil {
+		sess.mu.Lock()
+		client = sess.Client
+		container = sess.Container
+		if sess.cancel != nil {
+			sess.cancel()
+		}
+		sess.mu.Unlock()
+	}
+
+	var logoutErr error
+
+	// Sesi tidak aktif (sudah diputus): buka lagi store-nya untuk logout ke server.
+	// Gagal membuka (mis. file rusak) tidak boleh menghentikan pembersihan lokal.
+	if client == nil {
+		dbPath := filepath.Join(m.sessionDir, fmt.Sprintf("device_%d.db", deviceID))
+		if _, err := os.Stat(dbPath); err == nil {
+			c, err := sqlstore.New(context.Background(), "sqlite3", fmt.Sprintf("file:%s?_foreign_keys=on", dbPath), waLog.Noop)
+			if err != nil {
+				logoutErr = fmt.Errorf("gagal membuka sesi WhatsApp: %w", err)
+			} else {
+				container = c
+				ds, err := c.GetFirstDevice(context.Background())
+				if err != nil {
+					logoutErr = fmt.Errorf("gagal membaca sesi WhatsApp: %w", err)
+				} else {
+					client = whatsmeow.NewClient(ds, waLog.Noop)
+				}
+			}
+		}
+	}
+
+	if client != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		if client.Store.ID != nil {
+			if !client.IsConnected() {
+				if err := client.Connect(); err != nil {
+					logoutErr = fmt.Errorf("tidak bisa terhubung ke WhatsApp untuk mencabut tautan: %w", err)
+				}
+			}
+			if logoutErr == nil {
+				if err := client.Logout(ctx); err != nil {
+					logoutErr = fmt.Errorf("gagal mencabut tautan di WhatsApp: %w", err)
+				}
+			}
+			// Apa pun hasilnya, sesi lokal harus hilang agar QR diminta lagi.
+			client.Disconnect()
+			if err := client.Store.Delete(ctx); err != nil {
+				log.Warn().Err(err).Uint("deviceID", deviceID).Msg("Gagal menghapus store sesi")
+			}
+		} else {
+			client.Disconnect()
+		}
+		cancel()
+	}
+
+	if container != nil {
+		_ = container.Close()
+	}
+	base := filepath.Join(m.sessionDir, fmt.Sprintf("device_%d.db", deviceID))
+	for _, f := range []string{base, base + "-wal", base + "-shm"} {
+		if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
+			log.Warn().Err(err).Str("file", f).Msg("Gagal menghapus file sesi")
+		}
+	}
+
+	if sess != nil {
+		sess.mu.Lock()
+		sess.Status = "disconnected"
+		sess.QR = ""
+		sess.Client = nil
+		sess.Container = nil
+		sess.mu.Unlock()
+	}
+
+	if !m.shuttingDown.Load() {
+		m.db.Model(&models.Device{}).Where("id = ?", deviceID).Updates(map[string]interface{}{
+			"status":       "disconnected",
+			"phone":        "",
+			"connected_at": nil,
+		})
+	}
+
+	log.Info().Uint("deviceID", deviceID).Msg("WhatsApp session logged out (tautan dicabut, sesi lokal dihapus)")
+	return logoutErr
 }
 
 // DisconnectAll disconnects all active sessions (for graceful shutdown)
@@ -596,7 +726,14 @@ func (m *Manager) startSession(sess *SessionState) {
 	clientLog := waLog.Noop
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 
+	// Disconnect membatalkan ctx di bawah sess.mu yang sama: bila sudah
+	// dibatalkan sebelum client terpasang, berhenti di sini (jangan konek).
 	sess.mu.Lock()
+	if sess.cancelled() {
+		sess.mu.Unlock()
+		_ = container.Close()
+		return
+	}
 	sess.Client = client
 	sess.mu.Unlock()
 
@@ -622,7 +759,14 @@ func (m *Manager) connectWithQR(sess *SessionState, client *whatsmeow.Client) {
 	// Get QR channel
 	qrChan, _ := client.GetQRChannel(context.Background())
 
+	if sess.cancelled() {
+		return
+	}
 	err := client.Connect()
+	if sess.cancelled() {
+		client.Disconnect()
+		return
+	}
 	if err != nil {
 		log.Error().Err(err).Uint("deviceID", deviceID).Msg("Failed to connect (QR mode)")
 		sess.mu.Lock()
@@ -632,8 +776,19 @@ func (m *Manager) connectWithQR(sess *SessionState, client *whatsmeow.Client) {
 		return
 	}
 
-	// Listen for QR events
-	for evt := range qrChan {
+	// Listen for QR events (berhenti bila sesi dibatalkan oleh Disconnect)
+	for {
+		var evt whatsmeow.QRChannelItem
+		select {
+		case <-sess.done():
+			client.Disconnect()
+			return
+		case e, ok := <-qrChan:
+			if !ok {
+				return
+			}
+			evt = e
+		}
 		switch evt.Event {
 		case "code":
 			// New QR code generated
@@ -690,7 +845,15 @@ func (m *Manager) connectWithQR(sess *SessionState, client *whatsmeow.Client) {
 func (m *Manager) reconnectExisting(sess *SessionState, client *whatsmeow.Client) {
 	deviceID := sess.DeviceID
 
+	if sess.cancelled() {
+		return
+	}
 	err := client.Connect()
+	if sess.cancelled() {
+		// Pengguna memutus saat sesi sedang start: tutup socket, jangan set connected.
+		client.Disconnect()
+		return
+	}
 	if err != nil {
 		log.Error().Err(err).Uint("deviceID", deviceID).Msg("Failed to reconnect")
 		sess.mu.Lock()
@@ -702,8 +865,14 @@ func (m *Manager) reconnectExisting(sess *SessionState, client *whatsmeow.Client
 		return
 	}
 
-	// Connection established
+	// Connection established — dicek ulang di bawah sess.mu (lock yang sama
+	// dengan pembatalan di Disconnect) agar tidak menimpa pemutusan manual.
 	sess.mu.Lock()
+	if sess.cancelled() {
+		sess.mu.Unlock()
+		client.Disconnect()
+		return
+	}
 	sess.Status = "connected"
 	sess.QR = ""
 	sess.mu.Unlock()
@@ -758,7 +927,15 @@ func (m *Manager) reconnectWithBackoff(deviceID, userID uint) {
 		}
 
 		log.Info().Uint("deviceID", deviceID).Dur("backoff", backoff).Msg("Retrying WhatsApp connection")
-		m.Connect(deviceID, userID)
+		// Periksa ulang stop manual / generasi DI DALAM lock yang sama dengan
+		// pembuatan sesi, supaya Disconnect yang datang di sela tidak "kalah".
+		m.mu.Lock()
+		if m.retryGen[deviceID] != gen || m.manualStop[deviceID] {
+			m.mu.Unlock()
+			return
+		}
+		m.connectLocked(deviceID, userID)
+		m.mu.Unlock()
 
 		backoff *= 2
 		if backoff > maxBackoff {
@@ -786,6 +963,16 @@ func (m *Manager) handleEvent(sess *SessionState, evt interface{}) {
 		m.handleIncomingMessage(sess, v)
 
 	case *events.Connected:
+		if sess.cancelled() {
+			// Sesi sudah diputus pengguna tapi socket sempat tersambung: tutup lagi.
+			sess.mu.RLock()
+			c := sess.Client
+			sess.mu.RUnlock()
+			if c != nil {
+				go c.Disconnect() // async: Disconnect menunggu antrean handler ini
+			}
+			return
+		}
 		sess.mu.Lock()
 		sess.Status = "connected"
 		sess.QR = ""
@@ -822,6 +1009,9 @@ func (m *Manager) handleEvent(sess *SessionState, evt interface{}) {
 		go m.applyPresence(sess)
 
 	case *events.Disconnected:
+		if sess.cancelled() {
+			return // sesi sudah diputus/diganti; jangan timpa status & jangan retry
+		}
 		sess.mu.Lock()
 		sess.Status = "disconnected"
 		sess.mu.Unlock()

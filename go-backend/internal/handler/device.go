@@ -29,6 +29,7 @@ func registerDeviceRoutes(rg *gin.RouterGroup, db *gorm.DB, wm *whatsapp.Manager
 		devices.DELETE("/:id", write, deleteDevice(db, wm))
 		devices.POST("/:id/connect", write, connectDevice(db, wm))
 		devices.POST("/:id/disconnect", write, disconnectDevice(db, wm))
+		devices.POST("/:id/logout", write, logoutDevice(db, wm))
 		devices.GET("/:id/qr", read, getDeviceQR(db, wm))
 		devices.POST("/:id/pair-code", write, requestPairCode(db, wm))
 		devices.GET("/:id/status", read, getDeviceStatus(db, wm))
@@ -303,6 +304,32 @@ func disconnectDevice(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
 		udb.Model(&device).Update("status", "disconnected")
 
 		c.JSON(http.StatusOK, gin.H{"message": "Perangkat berhasil diputuskan", "status": "disconnected"})
+	}
+}
+
+// logoutDevice mencabut tautan perangkat dari WhatsApp dan menghapus sesi lokal
+// (wajib scan QR lagi). Berbeda dengan disconnectDevice yang mempertahankan sesi.
+func logoutDevice(db *gorm.DB, wm *whatsapp.Manager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := middleware.GetUserID(c)
+		udb := rls.Scoped(db, userID)
+		id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+
+		var device models.Device
+		if err := udb.Where("id = ? AND user_id = ?", id, userID).First(&device).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"message": "Perangkat tidak ditemukan", "code": "NOT_FOUND"})
+			return
+		}
+
+		resp := gin.H{"message": "Perangkat berhasil logout. Scan QR lagi untuk menghubungkan.", "status": "disconnected"}
+		if err := wm.Logout(uint(id)); err != nil {
+			// Sesi lokal sudah dihapus; hanya pencabutan di sisi WhatsApp yang gagal.
+			resp["message"] = "Sesi lokal dihapus, tetapi tautan di WhatsApp belum bisa dicabut. Hapus perangkat ini manual di HP (Perangkat tertaut)."
+			resp["warning"] = err.Error()
+		}
+		udb.Model(&device).Updates(map[string]interface{}{"status": "disconnected", "phone": ""})
+
+		c.JSON(http.StatusOK, resp)
 	}
 }
 

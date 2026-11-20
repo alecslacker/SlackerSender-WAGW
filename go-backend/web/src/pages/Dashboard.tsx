@@ -8,6 +8,7 @@ import {
   Plus,
   Trash2,
   WifiOff,
+  LogOut,
   X,
   RefreshCw,
   Pencil,
@@ -240,6 +241,8 @@ export default function Dashboard() {
 
   const [deleting, setDeleting] = useState<Device | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
+  const [loggingOut, setLoggingOut] = useState<Device | null>(null);
+  const [loggingOutBusy, setLoggingOutBusy] = useState(false);
 
   const [showAdd, setShowAdd] = useState(false);
   const [addName, setAddName] = useState("");
@@ -492,6 +495,22 @@ export default function Dashboard() {
       toast.error(e instanceof Error ? e.message : t("dashboard.disconnectFail"));
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const handleLogout = async () => {
+    if (!loggingOut) return;
+    setLoggingOutBusy(true);
+    try {
+      const res = await apiPost<{ warning?: string }>(`/devices/${loggingOut.id}/logout`);
+      if (res?.warning) toast.warning(t("dashboard.logoutPartial"));
+      else toast.success(t("dashboard.logoutDone"));
+      setLoggingOut(null);
+      loadDevices();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("dashboard.logoutFail"));
+    } finally {
+      setLoggingOutBusy(false);
     }
   };
 
@@ -886,6 +905,18 @@ export default function Dashboard() {
                                 <Smartphone className="w-4 h-4" />
                               </Button>
                             )}
+                            {d.phone && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setLoggingOut(d)}
+                                aria-label={t("dashboard.logout")}
+                                title={t("dashboard.logout")}
+                              >
+                                <LogOut className="w-4 h-4" />
+                              </Button>
+                            )}
                             <span className="mx-0.5 h-5 w-px bg-border" aria-hidden="true" />
                             <Button
                               variant="ghost"
@@ -1191,6 +1222,35 @@ export default function Dashboard() {
               )}
             </div>
           )}
+        </Modal>
+      )}
+
+      {/* Dialog konfirmasi logout (cabut tautan + hapus sesi) */}
+      {loggingOut && (
+        <Modal title={t("dashboard.logoutTitle")} onClose={() => setLoggingOut(null)}>
+          <p className="text-sm text-muted-foreground">
+            {t("dashboard.logoutConfirm")
+              .replace("{name}", loggingOut.name)
+              .replace("{phone}", loggingOut.phone ? ` (${loggingOut.phone})` : "")}
+          </p>
+          <div className="flex justify-end gap-2 mt-5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLoggingOut(null)}
+              disabled={loggingOutBusy}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleLogout}
+              disabled={loggingOutBusy}
+            >
+              {loggingOutBusy ? t("dashboard.loggingOut") : t("dashboard.logout")}
+            </Button>
+          </div>
         </Modal>
       )}
 
