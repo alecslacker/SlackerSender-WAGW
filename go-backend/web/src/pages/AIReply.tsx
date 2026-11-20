@@ -197,7 +197,7 @@ export default function AIReply({ embedded = false }: { embedded?: boolean }) {
         strictFaq,
         readImages,
         webSearch,
-        maxReplyLength: Math.max(100, Math.min(4000, maxReplyLength || 1000)),
+        maxReplyLength: Math.max(100, Math.min(16000, maxReplyLength || 1000)),
         contextMessages: Math.max(0, Math.min(20, contextMessages || 0)),
         ...(editing ? { isEnabled } : {}),
       };
@@ -592,7 +592,7 @@ export default function AIReply({ embedded = false }: { embedded?: boolean }) {
                   className="mt-1.5"
                   type="number"
                   min={100}
-                  max={4000}
+                  max={16000}
                   value={maxReplyLength}
                   onChange={(e) => setMaxReplyLength(Number(e.target.value))}
                 />

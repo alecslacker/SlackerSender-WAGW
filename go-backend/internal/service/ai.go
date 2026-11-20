@@ -92,8 +92,13 @@ type AIService struct {
 // redirect). Base URL AI boleh diubah user, jadi tidak boleh bisa diarahkan
 // ke 127.0.0.1 / jaringan privat / metadata cloud. Bila HTTPS_PROXY terisi,
 // SafeClient otomatis lewat proxy tersebut.
+//
+// Batas waktu total 150 detik: jawaban panjang (ribuan token) butuh lebih dari
+// 60 detik. Batas dial tetap 60 detik agar host yang mati tak menahan lama.
 func aiHTTPClient() *http.Client {
-	return security.NewSafeClient(60 * time.Second)
+	c := security.NewSafeClient(60 * time.Second)
+	c.Timeout = 150 * time.Second
+	return c
 }
 
 // NewAIService creates a new AI service (legacy: keys dari env)
@@ -156,6 +161,26 @@ type ChatMessage struct {
 // model reasoning (GLM-5.x, Gemini 2.5, dsb.) menghitung token berpikir ke
 // dalam batas ini; 500 terlalu kecil → content kosong, balasan hilang.
 const AIReplyMaxTokens = 2048
+
+// AIReplyMaxTokensCeiling: langit-langit anggaran token jawaban. Banyak model
+// membatasi keluaran di kisaran 8 ribu token; melewatinya memicu HTTP 400.
+const AIReplyMaxTokensCeiling = 8192
+
+// AIReplyTokensFor menghitung batas token jawaban dari batas karakter balasan:
+// ±3 karakter per token (Indonesia, perkiraan konservatif) ditambah 2048 ruang
+// berpikir untuk model reasoning. Tidak pernah di bawah AIReplyMaxTokens dan
+// tidak melewati AIReplyMaxTokensCeiling. Hanya batas atas — token yang tak
+// terpakai tidak ditagih.
+func AIReplyTokensFor(maxReplyChars int) int {
+	t := maxReplyChars/3 + 2048
+	if t < AIReplyMaxTokens {
+		t = AIReplyMaxTokens
+	}
+	if t > AIReplyMaxTokensCeiling {
+		t = AIReplyMaxTokensCeiling
+	}
+	return t
+}
 
 // ChatRequest holds parameters for AI completion
 type ChatRequest struct {
@@ -228,6 +253,15 @@ func ReasoningEffortFor(p AIProvider, model string) string {
 // agar balasan tak hilang. Hasil ulangan ditandai Downgraded.
 func (s *AIService) CompleteTolerant(req ChatRequest) (*ChatResponse, error) {
 	resp, err := s.Complete(req)
+	// Batas token besar (jawaban panjang) ditolak sebagian model dengan HTTP 400:
+	// ulangi sekali dengan batas lama agar balasan yang dulu berhasil tidak hilang.
+	if isBadRequest(err) && req.MaxTokens > AIReplyMaxTokens {
+		req.MaxTokens = AIReplyMaxTokens
+		resp, err = s.Complete(req)
+		if resp != nil {
+			resp.Downgraded = true
+		}
+	}
 	if isBadRequest(err) && (req.ReasoningEffort != "" || req.WebSearch) {
 		req.ReasoningEffort = ""
 		req.WebSearch = false

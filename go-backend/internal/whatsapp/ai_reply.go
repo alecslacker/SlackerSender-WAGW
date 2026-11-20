@@ -344,11 +344,13 @@ func (m *Manager) askAIWithHistory(userID uint, cfg *models.AIReplyConfig, histo
 			if webSearch {
 				sys = service.WithWebSearchGuard(systemPrompt)
 			}
+			// MaxTokens mengikuti batas panjang balasan config, agar jawaban panjang
+			// tak terpotong oleh model sebelum batas karakter tercapai.
 			req := service.ChatRequest{
 				Provider:        provider,
 				Model:           model,
 				Messages:        build(sys),
-				MaxTokens:       service.AIReplyMaxTokens,
+				MaxTokens:       service.AIReplyTokensFor(service.EffectiveMaxReplyLength(cfg)),
 				Temperature:     0.7,
 				ReasoningEffort: service.ReasoningEffortFor(provider, model),
 				WebSearch:       webSearch,

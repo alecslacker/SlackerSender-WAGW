@@ -33,8 +33,10 @@ var ChatbotPlanSlugs = map[string]bool{"pro": true, "master": true}
 // DefaultMaxReplyLength dipakai bila config mengosongkan MaxReplyLength.
 const DefaultMaxReplyLength = 1000
 
-// MaxReplyLengthCap: batas atas MaxReplyLength yang diizinkan.
-const MaxReplyLengthCap = 4000
+// MaxReplyLengthCap: batas atas MaxReplyLength yang diizinkan. 16.000 karakter
+// masih jauh di bawah batas pesan teks WhatsApp (±65 ribu) dan muat di anggaran
+// token AIReplyTokensFor.
+const MaxReplyLengthCap = 16000
 
 // MaxContextMessages: batas atas ContextMessages yang diizinkan.
 const MaxContextMessages = 20
