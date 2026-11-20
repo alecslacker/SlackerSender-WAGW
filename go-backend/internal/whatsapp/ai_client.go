@@ -84,8 +84,10 @@ func AskAI(db *gorm.DB, systemPrompt, userMessage string, images ...service.Chat
 	var parsed struct {
 		Choices []struct {
 			Message struct {
-				Content string `json:"content"`
+				Content          string `json:"content"`
+				ReasoningContent string `json:"reasoning_content"`
 			} `json:"message"`
+			FinishReason string `json:"finish_reason"`
 		} `json:"choices"`
 		Reply    string `json:"reply"`
 		Response string `json:"response"`
@@ -105,6 +107,14 @@ func AskAI(db *gorm.DB, systemPrompt, userMessage string, images ...service.Chat
 			return strings.TrimSpace(alt), nil
 		}
 	}
+	if len(parsed.Choices) > 0 {
+		c := parsed.Choices[0]
+		hint := (&service.ChatResponse{
+			FinishReason: c.FinishReason,
+			Reasoning:    strings.TrimSpace(c.Message.ReasoningContent) != "",
+		}).EmptyHint()
+		return "", fmt.Errorf("respon AI kosong: %s", hint)
+	}
 	return "", fmt.Errorf("respon AI kosong")
 }
 
@@ -117,7 +127,7 @@ func buildAIPayload(model, systemPrompt, userMessage string, images []service.Ch
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userMessage, Images: images},
 		}),
-		"max_tokens":  500,
+		"max_tokens":  service.AIReplyMaxTokens,
 		"temperature": 0.7,
 		// 9router membalas SSE bila stream tidak diisi; kita butuh satu JSON utuh.
 		"stream": false,

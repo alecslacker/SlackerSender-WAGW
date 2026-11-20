@@ -186,13 +186,14 @@ func (m *Manager) replyChatbot(sess *SessionState, senderJID, senderPhone, text 
 	history := service.RecentContext(m.db, sess.UserID, sess.DeviceID, senderPhone,
 		service.EffectiveContextMessages(cfg))
 	reply, err := m.askAIWithHistory(sess.UserID, cfg, history, text, images)
-	if err != nil && len(images) > 0 {
-		// Model kemungkinan tak mendukung gambar (mis. HTTP 400): coba lagi
-		// tanpa gambar bila ada caption, kalau tidak balas sopan.
+	if len(images) > 0 && (err != nil || strings.TrimSpace(reply) == "") {
+		// Model kemungkinan tak mendukung gambar (HTTP 400) atau menjawab kosong
+		// (token habis berpikir / diblokir): coba lagi tanpa gambar bila ada
+		// caption, kalau tidak balas sopan — pelanggan tak boleh dibiarkan diam.
 		log.Warn().Err(err).
 			Uint("deviceID", sess.DeviceID).
 			Uint("configID", cfg.ID).
-			Msg("AI reply dengan gambar gagal — model AI mungkin tidak mendukung gambar")
+			Msg("AI reply dengan gambar gagal/kosong — model AI mungkin tidak mendukung gambar")
 		if !hasCaption {
 			m.replyImageUnreadable(sess, senderJID, senderPhone, question)
 			return
@@ -272,15 +273,29 @@ func (m *Manager) askAIWithHistory(userID uint, cfg *models.AIReplyConfig, histo
 
 	if conn := service.ConnectionForUser(m.db, userID); conn != nil {
 		if svc := service.ServiceForConnection(conn); svc != nil {
-			resp, err := svc.Complete(service.ChatRequest{
-				Provider:    service.AIProvider(conn.Provider),
-				Model:       service.EffectiveModel(conn, ""),
-				Messages:    messages,
-				MaxTokens:   500,
-				Temperature: 0.7,
+			provider := service.AIProvider(conn.Provider)
+			model := service.EffectiveModel(conn, "")
+			resp, err := svc.CompleteTolerant(service.ChatRequest{
+				Provider:        provider,
+				Model:           model,
+				Messages:        messages,
+				MaxTokens:       service.AIReplyMaxTokens,
+				Temperature:     0.7,
+				ReasoningEffort: service.ReasoningEffortFor(provider, model),
 			})
 			if err != nil {
 				return "", err
+			}
+			// Jawaban kosong jangan hilang diam-diam: catat sebabnya (mis. model
+			// reasoning menghabiskan token untuk berpikir).
+			if strings.TrimSpace(resp.Content) == "" {
+				log.Warn().
+					Uint("userID", userID).
+					Str("provider", conn.Provider).
+					Str("model", model).
+					Int("tokens", resp.Tokens).
+					Str("sebab", resp.EmptyHint()).
+					Msg("AI membalas kosong")
 			}
 			return resp.Content, nil
 		}

@@ -21,9 +21,9 @@ const (
 	ProviderGemini     AIProvider = "gemini"
 	ProviderAnthropic  AIProvider = "anthropic"
 	ProviderDeepSeek   AIProvider = "deepseek"
-	ProviderZAI        AIProvider = "zai"      // Zhipu AI (z.ai), OpenAI-compatible
-	ProviderNineRouter AIProvider = "9router"  // 9router, OpenAI-compatible, endpoint bisa diganti
-	ProviderCustom     AIProvider = "custom"   // OpenAI-compatible endpoint bebas
+	ProviderZAI        AIProvider = "zai"     // Zhipu AI (z.ai), OpenAI-compatible
+	ProviderNineRouter AIProvider = "9router" // 9router, OpenAI-compatible, endpoint bisa diganti
+	ProviderCustom     AIProvider = "custom"  // OpenAI-compatible endpoint bebas
 )
 
 // ProviderDefaults: model bawaan + base URL tiap provider.
@@ -31,11 +31,11 @@ var ProviderDefaults = map[AIProvider]struct {
 	BaseURL string
 	Model   string
 }{
-	ProviderOpenAI:     {"https://api.openai.com/v1", "gpt-4o-mini"},
-	ProviderGemini:     {"https://generativelanguage.googleapis.com/v1beta", "gemini-2.0-flash"},
-	ProviderAnthropic:  {"https://api.anthropic.com/v1", "claude-3-5-haiku-20241022"},
-	ProviderDeepSeek:   {"https://api.deepseek.com", "deepseek-chat"},
-	ProviderZAI:        {"https://api.z.ai/api/paas/v4", "glm-4.5"},
+	ProviderOpenAI:    {"https://api.openai.com/v1", "gpt-4o-mini"},
+	ProviderGemini:    {"https://generativelanguage.googleapis.com/v1beta", "gemini-2.0-flash"},
+	ProviderAnthropic: {"https://api.anthropic.com/v1", "claude-3-5-haiku-20241022"},
+	ProviderDeepSeek:  {"https://api.deepseek.com", "deepseek-chat"},
+	ProviderZAI:       {"https://api.z.ai/api/paas/v4", "glm-4.5"},
 	// 9router: base URL & model diambil dari config (AI_DEFAULT_BASE_URL /
 	// AI_DEFAULT_MODEL) lewat baseURLDefaultFor/DefaultModelFor — nilai di
 	// sini hanya placeholder karena map dibuat sebelum config dimuat.
@@ -82,9 +82,9 @@ type AIService struct {
 	OpenAIKey    string
 	AnthropicKey string
 	// Koneksi milik user (menggantikan key env bila diisi).
-	Provider AIProvider
-	APIKey   string
-	BaseURL  string
+	Provider   AIProvider
+	APIKey     string
+	BaseURL    string
 	HTTPClient *http.Client
 }
 
@@ -151,6 +151,12 @@ type ChatMessage struct {
 	Images []ChatImage `json:"-"`
 }
 
+// AIReplyMaxTokens: batas token jawaban AI Reply. Hanya batas atas — panjang
+// balasan ke pelanggan tetap dipotong MaxReplyLength. Dibuat longgar karena
+// model reasoning (GLM-5.x, Gemini 2.5, dsb.) menghitung token berpikir ke
+// dalam batas ini; 500 terlalu kecil → content kosong, balasan hilang.
+const AIReplyMaxTokens = 2048
+
 // ChatRequest holds parameters for AI completion
 type ChatRequest struct {
 	Provider    AIProvider
@@ -158,12 +164,60 @@ type ChatRequest struct {
 	Messages    []ChatMessage
 	MaxTokens   int
 	Temperature float64
+	// ReasoningEffort (opsional): tingkat berpikir model reasoning, dikirim
+	// apa adanya ke provider OpenAI-compatible. Kosong = tidak dikirim.
+	// Lihat ReasoningEffortFor untuk kapan aman dipakai.
+	ReasoningEffort string
 }
 
 // ChatResponse holds the AI response
 type ChatResponse struct {
 	Content string
 	Tokens  int
+	// FinishReason & Reasoning hanya terisi dari provider OpenAI-compatible;
+	// dipakai untuk menjelaskan jawaban kosong (lihat EmptyHint).
+	FinishReason string
+	Reasoning    bool // respons membawa reasoning_content (model berpikir)
+}
+
+// EmptyHint menjelaskan kemungkinan sebab jawaban kosong untuk log/diagnosis.
+// Kasus khas: model reasoning (mis. GLM-5.x) menghabiskan seluruh max_tokens
+// untuk berpikir sehingga content kosong.
+func (r *ChatResponse) EmptyHint() string {
+	switch {
+	case r.FinishReason == "length" && r.Reasoning:
+		return "token habis dipakai berpikir (model reasoning) — naikkan max_tokens atau pakai model non-reasoning"
+	case r.FinishReason == "length":
+		return "terpotong batas max_tokens"
+	case r.FinishReason != "":
+		return "finish_reason=" + r.FinishReason
+	}
+	return "provider tidak mengirim finish_reason"
+}
+
+// ReasoningEffortFor: tingkat berpikir yang aman untuk AI Reply. Hanya Z.AI
+// langsung dengan GLM-5.3 / GLM-5.3-FLASH (selalu berpikir, bawaan "max"; docs
+// Z.AI menyebut reasoning_effort low|high|max untuk model ini) yang dikirimi
+// "low" agar balasan chat cepat & tidak menghabiskan token. Model GLM lain dan
+// provider lain (termasuk 9router) tidak dikirimi — belum terdokumentasi
+// menerima field itu.
+func ReasoningEffortFor(p AIProvider, model string) string {
+	if p == ProviderZAI && strings.HasPrefix(strings.ToLower(strings.TrimSpace(model)), "glm-5.3") {
+		return "low"
+	}
+	return ""
+}
+
+// CompleteTolerant memanggil Complete; bila provider menolak (HTTP 400) request
+// yang membawa ReasoningEffort, ulangi SEKALI tanpa field itu — jaring pengaman
+// bila provider/model tak mengenal field tersebut, agar balasan tak hilang.
+func (s *AIService) CompleteTolerant(req ChatRequest) (*ChatResponse, error) {
+	resp, err := s.Complete(req)
+	if err != nil && req.ReasoningEffort != "" && strings.Contains(err.Error(), "AI error 400") {
+		req.ReasoningEffort = ""
+		return s.Complete(req)
+	}
+	return resp, err
 }
 
 // NormalizeChatHistory merapikan riwayat percakapan (terurut kronologis,
@@ -190,7 +244,6 @@ func NormalizeChatHistory(msgs []ChatMessage) []ChatMessage {
 	}
 	return merged
 }
-
 
 // Complete sends a chat completion request to the configured provider
 func (s *AIService) Complete(req ChatRequest) (*ChatResponse, error) {
@@ -243,15 +296,25 @@ func (s *AIService) completeOpenAICompatible(req ChatRequest) (*ChatResponse, er
 	if model == "" {
 		model = "default"
 	}
-	return s.postChatCompletions(base+"/chat/completions", key, model, req.Messages, maxTokens, temp)
+	var extra map[string]interface{}
+	if req.ReasoningEffort != "" {
+		extra = map[string]interface{}{"reasoning_effort": req.ReasoningEffort}
+	}
+	return s.postChatCompletions(base+"/chat/completions", key, model, req.Messages, maxTokens, temp, extra)
 }
 
-func (s *AIService) postChatCompletions(url, key, model string, messages []ChatMessage, maxTokens int, temp float64) (*ChatResponse, error) {
+// postChatCompletions: extra (opsional) = field tambahan body, mis. reasoning_effort.
+func (s *AIService) postChatCompletions(url, key, model string, messages []ChatMessage, maxTokens int, temp float64, extra ...map[string]interface{}) (*ChatResponse, error) {
 	body := map[string]interface{}{
 		"model":       model,
 		"messages":    OpenAIMessages(messages),
 		"max_tokens":  maxTokens,
 		"temperature": temp,
+	}
+	for _, e := range extra {
+		for k, v := range e {
+			body[k] = v
+		}
 	}
 
 	jsonBody, _ := json.Marshal(body)
@@ -281,8 +344,10 @@ func (s *AIService) postChatCompletions(url, key, model string, messages []ChatM
 	var result struct {
 		Choices []struct {
 			Message struct {
-				Content string `json:"content"`
+				Content          string `json:"content"`
+				ReasoningContent string `json:"reasoning_content"`
 			} `json:"message"`
+			FinishReason string `json:"finish_reason"`
 		} `json:"choices"`
 		Usage struct {
 			TotalTokens int `json:"total_tokens"`
@@ -300,9 +365,12 @@ func (s *AIService) postChatCompletions(url, key, model string, messages []ChatM
 		return nil, fmt.Errorf("AI returned no choices")
 	}
 
+	c := result.Choices[0]
 	return &ChatResponse{
-		Content: result.Choices[0].Message.Content,
-		Tokens:  result.Usage.TotalTokens,
+		Content:      c.Message.Content,
+		Tokens:       result.Usage.TotalTokens,
+		FinishReason: c.FinishReason,
+		Reasoning:    strings.TrimSpace(c.Message.ReasoningContent) != "",
 	}, nil
 }
 
@@ -317,6 +385,8 @@ func looksLikeSSE(body []byte) bool {
 func parseSSEChatResponse(body []byte) (*ChatResponse, error) {
 	var sb strings.Builder
 	tokens := 0
+	finish := ""
+	reasoning := false
 	for _, line := range bytes.Split(body, []byte("\n")) {
 		line = bytes.TrimSpace(line)
 		if !bytes.HasPrefix(line, []byte("data:")) {
@@ -329,8 +399,10 @@ func parseSSEChatResponse(body []byte) (*ChatResponse, error) {
 		var chunk struct {
 			Choices []struct {
 				Delta struct {
-					Content string `json:"content"`
+					Content          string `json:"content"`
+					ReasoningContent string `json:"reasoning_content"`
 				} `json:"delta"`
+				FinishReason string `json:"finish_reason"`
 			} `json:"choices"`
 			Usage struct {
 				TotalTokens int `json:"total_tokens"`
@@ -340,7 +412,14 @@ func parseSSEChatResponse(body []byte) (*ChatResponse, error) {
 			continue // lewati baris yang bukan JSON valid
 		}
 		if len(chunk.Choices) > 0 {
-			sb.WriteString(chunk.Choices[0].Delta.Content)
+			ch := chunk.Choices[0]
+			sb.WriteString(ch.Delta.Content)
+			if strings.TrimSpace(ch.Delta.ReasoningContent) != "" {
+				reasoning = true
+			}
+			if ch.FinishReason != "" {
+				finish = ch.FinishReason
+			}
 		}
 		if chunk.Usage.TotalTokens > 0 {
 			tokens = chunk.Usage.TotalTokens
@@ -348,9 +427,12 @@ func parseSSEChatResponse(body []byte) (*ChatResponse, error) {
 	}
 	content := strings.TrimSpace(sb.String())
 	if content == "" {
-		return nil, fmt.Errorf("AI returned empty SSE stream (body: %s)", truncateAIError(string(body)))
+		// Tetap error (perilaku lama, pemanggil tak perlu cek kosong) — tapi kini
+		// dengan sebab yang bisa dibaca (mis. token habis dipakai berpikir).
+		hint := (&ChatResponse{FinishReason: finish, Reasoning: reasoning}).EmptyHint()
+		return nil, fmt.Errorf("AI returned empty SSE stream: %s (body: %s)", hint, truncateAIError(string(body)))
 	}
-	return &ChatResponse{Content: content, Tokens: tokens}, nil
+	return &ChatResponse{Content: content, Tokens: tokens, FinishReason: finish, Reasoning: reasoning}, nil
 }
 
 // truncateAIError memotong pesan error agar tidak membocorkan seluruh body.
@@ -361,7 +443,6 @@ func truncateAIError(s string) string {
 	}
 	return s
 }
-
 
 func (s *AIService) completeAnthropic(req ChatRequest) (*ChatResponse, error) {
 	key := s.apiKeyFor(ProviderAnthropic)

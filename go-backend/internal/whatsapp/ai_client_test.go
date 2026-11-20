@@ -34,7 +34,7 @@ func TestBuildAIPayloadTanpaGambarSamaSepertiLama(t *testing.T) {
 			{"role": "system", "content": "sys"},
 			{"role": "user", "content": "halo"},
 		},
-		"max_tokens":  500,
+		"max_tokens":  2048, // guard: batas token AI Reply (reasoning butuh ruang)
 		"temperature": 0.7,
 		"stream":      false,
 	}
