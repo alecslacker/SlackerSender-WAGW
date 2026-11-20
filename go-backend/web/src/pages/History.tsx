@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { History as HistoryIcon, Undo2, ChevronLeft, ChevronRight } from "lucide-react";
+import { History as HistoryIcon, Undo2, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { apiGet, apiDelete } from "@/lib/api";
 import { useLang } from "@/lib/i18n";
+import { MessagePreviewDialog } from "@/components/history/MessagePreviewDialog";
 
 interface HistoryMessage {
   id: number;
@@ -15,6 +16,9 @@ interface HistoryMessage {
   to: string;
   type: string;
   content: string;
+  caption?: string;
+  mediaUrl?: string;
+  errorMsg?: string;
   status: string;
   via: string;
   messageId: string;
@@ -70,6 +74,7 @@ export default function History() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState<number | null>(null);
+  const [previewIdx, setPreviewIdx] = useState<number | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -86,6 +91,7 @@ export default function History() {
       for (const dev of d.devices ?? []) map[dev.id] = dev.phone || dev.name || `#${dev.id}`;
       setDevices(map);
       setPage(p);
+      setPreviewIdx(null);
     } catch (e: any) {
       toast.error(e.message || t("history.loadFailed"));
     } finally {
@@ -152,19 +158,43 @@ export default function History() {
                   </thead>
                   <tbody>
                     {rows.map((m) => (
-                      <tr key={m.id} className="border-b border-border last:border-0">
+                      <tr
+                        key={m.id}
+                        className="border-b border-border last:border-0 cursor-pointer hover:bg-secondary/40"
+                        onClick={() => setPreviewIdx(rows.indexOf(m))}
+                      >
                         <td className="py-3 pr-4 font-mono text-[13px]">{m.id}</td>
                         <td className="py-3 pr-4 font-mono text-[13px]">{devices[m.deviceId] ?? `#${m.deviceId}`}</td>
                         <td className="py-3 pr-4 font-mono text-[13px]">{m.to}</td>
-                        <td className="py-3 pr-4 text-xs text-muted-foreground max-w-[280px] truncate" title={m.content}>
-                          {m.content || "-"}
+                        <td className="py-3 pr-4 text-xs text-muted-foreground max-w-[280px] truncate">
+                          <button
+                            type="button"
+                            className="max-w-full truncate text-left hover:text-foreground hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                            title={t("history.previewOpen")}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreviewIdx(rows.indexOf(m));
+                            }}
+                          >
+                            {m.content || m.caption || (m.type && m.type !== "text" ? `[${m.type}]` : "-")}
+                          </button>
                         </td>
                         <td className="py-3 pr-4">{statusBadge(m.status, t)}</td>
                         <td className="py-3 pr-4">
                           <Badge variant="secondary">{m.via || "-"}</Badge>
                         </td>
                         <td className="py-3 pr-4 text-xs text-muted-foreground whitespace-nowrap">{formatDate(m.createdAt)}</td>
-                        <td className="py-3">
+                        <td className="py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="mr-1.5"
+                            aria-label={t("history.previewOpen")}
+                            title={t("history.previewOpen")}
+                            onClick={() => setPreviewIdx(rows.indexOf(m))}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
                           {canRevoke(m) ? (
                             <Button
                               variant="destructive"
@@ -175,9 +205,7 @@ export default function History() {
                               <Undo2 className="w-3.5 h-3.5 mr-1" />
                               {revoking === m.id ? "..." : t("history.revokeButton")}
                             </Button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
+                          ) : null}
                         </td>
                       </tr>
                     ))}
@@ -205,6 +233,18 @@ export default function History() {
           )}
         </CardContent>
       </Card>
+
+      {previewIdx !== null && rows[previewIdx] && (
+        <MessagePreviewDialog
+          message={rows[previewIdx]}
+          deviceLabel={devices[rows[previewIdx].deviceId] ?? `#${rows[previewIdx].deviceId}`}
+          hasPrev={previewIdx > 0}
+          hasNext={previewIdx < rows.length - 1}
+          onPrev={() => setPreviewIdx((i) => (i === null ? i : Math.max(0, i - 1)))}
+          onNext={() => setPreviewIdx((i) => (i === null ? i : Math.min(rows.length - 1, i + 1)))}
+          onClose={() => setPreviewIdx(null)}
+        />
+      )}
     </div>
   );
 }
