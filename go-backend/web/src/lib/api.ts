@@ -22,8 +22,18 @@ export async function apiFetch(
     window.location.href = "/login";
   }
 
+  // Ubah data otomatisasi (tambah/hapus/toggle) -> ringkasan di halaman Otomatisasi
+  // memuat ulang sendiri, agar angkanya tak basi.
+  const method = (options.method || "GET").toUpperCase();
+  if (res.ok && method !== "GET" && AUTOMATION_PATH.test(path)) {
+    window.dispatchEvent(new Event(AUTOMATION_CHANGED));
+  }
+
   return res;
 }
+
+export const AUTOMATION_CHANGED = "automation:changed";
+const AUTOMATION_PATH = /^\/(auto-reply|menu-bots|ai-reply|group-rules)(\/|\?|$)/;
 
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await apiFetch(path);

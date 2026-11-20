@@ -7,17 +7,28 @@ import AIReply from "./AIReply";
 import GroupRules from "./GroupRules";
 import MenuBot from "./MenuBot";
 import { PageTabs } from "@/components/ui/tabs";
-import { apiGet } from "@/lib/api";
+import { apiGet, AUTOMATION_CHANGED } from "@/lib/api";
 import { useActiveDevice } from "@/hooks/use-active-device";
 
-/** Ringkasan jumlah otomatisasi yang aktif untuk perangkat aktif. */
+type Summary = { autoReply: number | null; menuBot: number | null; aiReply: number | null; groupRules: number | null };
+const EMPTY_SUMMARY: Summary = { autoReply: null, menuBot: null, aiReply: null, groupRules: null };
+
+/** Ringkasan jumlah otomatisasi yang aktif untuk perangkat aktif. null = gagal dimuat (tampil "–", bukan 0). */
 function useAutomationSummary(tabKey: string) {
   const { activeDeviceId } = useActiveDevice();
-  const [summary, setSummary] = useState({ autoReply: 0, menuBot: 0, aiReply: 0, groupRules: 0 });
+  const [summary, setSummary] = useState<Summary>(EMPTY_SUMMARY);
+  const [version, setVersion] = useState(0);
+
+  // Tab menambah/menghapus/mengubah aturan -> muat ulang ringkasan.
+  useEffect(() => {
+    const bump = () => setVersion((v) => v + 1);
+    window.addEventListener(AUTOMATION_CHANGED, bump);
+    return () => window.removeEventListener(AUTOMATION_CHANGED, bump);
+  }, []);
 
   useEffect(() => {
     if (activeDeviceId == null) {
-      setSummary({ autoReply: 0, menuBot: 0, aiReply: 0, groupRules: 0 });
+      setSummary(EMPTY_SUMMARY);
       return;
     }
     let alive = true;
@@ -25,25 +36,25 @@ function useAutomationSummary(tabKey: string) {
       apiGet<{ rules: { deviceId: number | null; isActive: boolean }[] }>("/auto-reply"),
       apiGet<{ menuBots: { bot: { deviceId: number | null; isActive: boolean } }[] }>("/menu-bots"),
       apiGet<{ configs: { deviceId: number; isEnabled: boolean }[] }>("/ai-reply"),
-      apiGet<{ rules: { deviceId: number; isActive: boolean }[] } | { deviceId: number; isActive: boolean }[]>("/group-rules"),
+      apiGet<{ rules: { deviceId: number; isActive: boolean }[] } | { deviceId: number; isActive: boolean }[]>("/group-rules?limit=200"),
     ]).then(([ar, mb, ai, gr]) => {
       if (!alive) return;
-      const rules = ar.status === "fulfilled" ? (ar.value.rules ?? []) : [];
-      const bots = mb.status === "fulfilled" ? (mb.value.menuBots ?? []) : [];
-      const cfgs = ai.status === "fulfilled" ? (ai.value.configs ?? []) : [];
-      const grVal = gr.status === "fulfilled" ? gr.value : [];
-      const grules = Array.isArray(grVal) ? grVal : (grVal.rules ?? []);
+      const rules = ar.status === "fulfilled" ? (ar.value.rules ?? []) : null;
+      const bots = mb.status === "fulfilled" ? (mb.value.menuBots ?? []) : null;
+      const cfgs = ai.status === "fulfilled" ? (ai.value.configs ?? []) : null;
+      const grVal = gr.status === "fulfilled" ? gr.value : null;
+      const grules = grVal == null ? null : Array.isArray(grVal) ? grVal : (grVal.rules ?? []);
       setSummary({
-        autoReply: rules.filter((r) => r.deviceId === activeDeviceId && r.isActive).length,
-        menuBot: bots.filter((e) => e.bot.deviceId === activeDeviceId && e.bot.isActive).length,
-        aiReply: cfgs.filter((c) => c.deviceId === activeDeviceId && c.isEnabled).length,
-        groupRules: grules.filter((g) => g.deviceId === activeDeviceId && g.isActive).length,
+        autoReply: rules && rules.filter((r) => r.deviceId === activeDeviceId && r.isActive).length,
+        menuBot: bots && bots.filter((e) => e.bot.deviceId === activeDeviceId && e.bot.isActive).length,
+        aiReply: cfgs && cfgs.filter((c) => c.deviceId === activeDeviceId && c.isEnabled).length,
+        groupRules: grules && grules.filter((g) => g.deviceId === activeDeviceId && g.isActive).length,
       });
     });
     return () => {
       alive = false;
     };
-  }, [activeDeviceId, tabKey]);
+  }, [activeDeviceId, tabKey, version]);
 
   return summary;
 }
@@ -97,10 +108,10 @@ export default function AutomationHub() {
               <span key={s.label} className="inline-flex items-center gap-1.5">
                 <span
                   className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${
-                    s.value > 0 ? "bg-[#15803d] text-white" : "bg-muted text-muted-foreground"
+                    s.value != null && s.value > 0 ? "bg-[#15803d] text-white" : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {s.value}
+                  {s.value ?? "–"}
                 </span>
                 <span className="text-muted-foreground">{s.label}</span>
               </span>

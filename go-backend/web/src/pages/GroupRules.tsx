@@ -66,7 +66,7 @@ export default function GroupRules({ embedded = false }: { embedded?: boolean })
     setLoading(true);
     try {
       const [r, g] = await Promise.all([
-        apiGet<{ rules: GroupRule[] } | GroupRule[]>("/group-rules"),
+        apiGet<{ rules: GroupRule[] } | GroupRule[]>("/group-rules?limit=200"),
         apiGet<{ groups: SyncedGroup[] }>("/contact-groups").catch(() => ({ groups: [] })),
       ]);
       setItems(Array.isArray(r) ? r : r.rules ?? []);
