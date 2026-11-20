@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Bot, Eye, EyeOff, FlaskConical, Trash2 } from "lucide-react";
+import { Bot, Eye, EyeOff, FlaskConical, Image as ImageIcon, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,11 +15,21 @@ interface AIConnection {
   baseUrl?: string;
   keyHint?: string;
   isActive?: boolean;
+  // Hasil "Cek Gambar" untuk model yang sedang tersimpan ("" = belum dicek).
+  visionStatus?: "yes" | "no" | "";
 }
 
 interface TestResult {
   ok: boolean;
   message: string;
+  latencyMs?: number;
+}
+
+interface VisionResult {
+  ok: boolean;
+  status: "yes" | "no" | "unknown";
+  message: string;
+  saved?: boolean;
   latencyMs?: number;
 }
 
@@ -70,6 +80,8 @@ export default function AIConnectionCard({ onChanged }: { onChanged?: () => void
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [checkingVision, setCheckingVision] = useState(false);
+  const [visionResult, setVisionResult] = useState<VisionResult | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -150,6 +162,30 @@ export default function AIConnectionCard({ onChanged }: { onChanged?: () => void
     }
   };
 
+  // "Cek Gambar": menguji nilai form yang BELUM tersimpan; hasil hanya tersimpan di
+  // server bila yang diuji = koneksi tersimpan (lihat saved).
+  const checkVision = async () => {
+    setCheckingVision(true);
+    setVisionResult(null);
+    try {
+      const r = await apiPost<VisionResult>("/ai-connection/vision-check", {
+        provider,
+        apiKey: apiKey.trim(),
+        model: effectiveModel(),
+        baseUrl: provider in EDITABLE_BASE_URL ? baseUrl.trim() : "",
+      });
+      setVisionResult(r);
+      if (r.saved) {
+        setConn((c) => (c ? { ...c, visionStatus: r.status === "yes" ? "yes" : "no" } : c));
+        onChanged?.();
+      }
+    } catch (e: any) {
+      setVisionResult({ ok: false, status: "unknown", message: e.message || t("aiReply.visionCheckFail") });
+    } finally {
+      setCheckingVision(false);
+    }
+  };
+
   const remove = async () => {
     if (!confirm(t("aiReply.connDelete") + "?")) return;
     try {
@@ -176,9 +212,15 @@ export default function AIConnectionCard({ onChanged }: { onChanged?: () => void
             <h2 className="text-base font-semibold">{t("aiReply.connTitle")}</h2>
           </div>
           {loading ? null : conn?.configured ? (
-            <Badge variant="success">
-              {providerLabel} • {conn.model}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge variant="success">
+                {providerLabel} • {conn.model}
+              </Badge>
+              {/* Status gambar untuk model TERSIMPAN; "" = belum dicek / model sudah diganti. */}
+              {conn.visionStatus === "yes" && <Badge variant="success">{t("aiReply.visionBadgeYes")}</Badge>}
+              {conn.visionStatus === "no" && <Badge variant="destructive">{t("aiReply.visionBadgeNo")}</Badge>}
+              {!conn.visionStatus && <Badge variant="secondary">{t("aiReply.visionBadgeUnchecked")}</Badge>}
+            </div>
           ) : (
             <Badge variant="secondary">{t("aiReply.connNotConfigured")}</Badge>
           )}
@@ -290,6 +332,10 @@ export default function AIConnectionCard({ onChanged }: { onChanged?: () => void
               <FlaskConical className="w-4 h-4" />
               {testing ? t("aiReply.connTesting") : t("aiReply.connTest")}
             </Button>
+            <Button size="sm" variant="tint" onClick={checkVision} disabled={checkingVision} className="gap-1.5">
+              <ImageIcon className="w-4 h-4" />
+              {checkingVision ? t("aiReply.visionChecking") : t("aiReply.visionCheck")}
+            </Button>
             {conn?.configured && (
               <Button size="sm" variant="ghost" onClick={remove} className="gap-1.5 text-destructive">
                 <Trash2 className="w-4 h-4" /> {t("aiReply.connDelete")}
@@ -300,6 +346,21 @@ export default function AIConnectionCard({ onChanged }: { onChanged?: () => void
                 {testResult.ok
                   ? `${t("aiReply.connTestOk")}${testResult.latencyMs != null ? ` • ${testResult.latencyMs}ms` : ""}`
                   : `${t("aiReply.connTestFail")}: ${testResult.message}`}
+              </span>
+            )}
+            {visionResult && (
+              <span
+                className={`text-xs ${
+                  visionResult.status === "yes" ? "text-green-600"
+                  : visionResult.status === "no" ? "text-destructive"
+                  : "text-amber-500"
+                }`}
+              >
+                {visionResult.status === "yes" && t("aiReply.visionYes")}
+                {visionResult.status === "no" && `${t("aiReply.visionNo")}`}
+                {visionResult.status === "unknown" && `${t("aiReply.visionUnknown")}: ${visionResult.message}`}
+                {visionResult.status === "yes" && !visionResult.saved && ` (${t("aiReply.visionNotSaved")})`}
+                {visionResult.status === "no" && !visionResult.saved && ` (${t("aiReply.visionNotSaved")})`}
               </span>
             )}
           </div>

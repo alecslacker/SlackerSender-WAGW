@@ -26,6 +26,7 @@ func registerAIConnectionRoutes(rg *gin.RouterGroup, db *gorm.DB) {
 		ar.PUT("", upsertAIConnection(db))
 		ar.DELETE("", deleteAIConnection(db))
 		ar.POST("/test", testAIConnection(db))
+		ar.POST("/vision-check", visionCheck(db))
 	}
 }
 
@@ -41,7 +42,19 @@ func connectionDTO(conn *models.AIConnection) gin.H {
 		"baseUrl":    conn.BaseURL,
 		"keyHint":    "••••" + conn.KeyHint,
 		"isActive":   conn.IsActive,
+		// Hasil uji gambar: hanya berlaku bila model yang dicek == model sekarang.
+		"visionStatus":    visionStatusFor(conn),
+		"visionModel":     conn.VisionModel,
+		"visionCheckedAt": conn.VisionCheckedAt,
 	}
+}
+
+// visionStatusFor mengembalikan "yes" | "no" | "" (belum dicek / model sudah diganti).
+func visionStatusFor(conn *models.AIConnection) string {
+	if conn.VisionChecked() {
+		return conn.VisionStatus
+	}
+	return ""
 }
 
 func getAIConnection(db *gorm.DB) gin.HandlerFunc {
@@ -140,6 +153,9 @@ func upsertAIConnection(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		// Yang diuji berubah (provider/model/URL/kunci) -> hasil uji gambar lama tak
+		// berlaku lagi. Baris soft-deleted yang dihidupkan kembali ikut tereset.
+		conn.ResetVisionIfChanged(provider, model, baseURL, strings.TrimSpace(req.APIKey) != "")
 		conn.UserID = userID
 		conn.Provider = provider
 		conn.Model = model

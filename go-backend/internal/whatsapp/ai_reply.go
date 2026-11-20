@@ -21,6 +21,7 @@ package whatsapp
 // teks saja, atau pesan sopan bila tak ada caption (lihat ai_image.go).
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -167,7 +168,18 @@ func (m *Manager) replyChatbot(sess *SessionState, senderJID, senderPhone, text 
 	// bila tak ada caption sebagai pegangan.
 	hasCaption := strings.TrimSpace(text) != ""
 	var images []service.ChatImage
+	imageSkipped := false
 	if cfg.ReadImages && isImageMessage(msg) {
+		// Model yang SUDAH terbukti tak bisa melihat gambar (hasil "Cek Gambar"):
+		// jangan unduh/kirim gambar; model menjawab teks dengan jujur (catatan sistem).
+		conn := service.ConnectionForUser(m.db, sess.UserID)
+		if decideImagePath(conn) == imageSkip {
+			imageSkipped = true
+			log.Info().Uint("deviceID", sess.DeviceID).Uint("configID", cfg.ID).
+				Msg("AI reply: gambar dilewati — model tercatat tidak mendukung gambar")
+		}
+	}
+	if cfg.ReadImages && isImageMessage(msg) && !imageSkipped {
 		img, err := m.loadAIImage(sess, msg)
 		if err != nil {
 			log.Warn().Err(err).
@@ -186,7 +198,18 @@ func (m *Manager) replyChatbot(sess *SessionState, senderJID, senderPhone, text 
 	// 3b. Fallback LLM dengan konteks N pesan terakhir percakapan ini.
 	history := service.RecentContext(m.db, sess.UserID, sess.DeviceID, senderPhone,
 		service.EffectiveContextMessages(cfg))
-	reply, err := m.askAIWithHistory(sess.UserID, cfg, history, text, images)
+	askCfg, askText := cfg, text
+	if imageSkipped {
+		// Catatan jujur di system prompt; teks pelanggan tak diubah, kecuali kosong
+		// (tanpa caption) -> teks pengganti agar pesan user tak kosong.
+		c2 := *cfg
+		c2.SystemPrompt = withImageUnsupportedNote(cfg.SystemPrompt)
+		askCfg = &c2
+		if !hasCaption {
+			askText = imageSkippedUserText
+		}
+	}
+	reply, err := m.askAIWithHistory(sess.UserID, askCfg, history, askText, images)
 	if len(images) > 0 && (err != nil || strings.TrimSpace(reply) == "") {
 		// Model kemungkinan tak mendukung gambar (HTTP 400) atau menjawab kosong
 		// (token habis berpikir / diblokir): coba lagi tanpa gambar bila ada
@@ -288,6 +311,20 @@ func (m *Manager) askAIWithHistory(userID uint, cfg *models.AIReplyConfig, histo
 	// Waktu diambil SEKALI per panggilan agar balasan awal dan ulangan (setelah
 	// penurunan fitur) memakai jam yang sama.
 	now := time.Now()
+	// Cari di Web lewat penyedia pencarian terpisah (tidak terikat model): hasil/catatan
+	// ditempel ke system prompt sebagai DATA. Bila sudah mencari/gagal lewat jalur
+	// ini, pencarian bawaan provider TIDAK dipakai lagi (tak mencari dua kali).
+	// Teks pengganti (gambar dilewati tanpa caption) bukan pertanyaan pelanggan:
+	// jangan dijadikan kueri pencarian.
+	searchNote := ""
+	if userMessage != imageSkippedUserText {
+		searchNote, _ = webSearchNote(context.Background(), m.db, service.DefaultSearchGuard,
+			service.SearcherForConnection, userID, cfg, userMessage)
+	}
+	serverSearch := searchNote != ""
+	if serverSearch {
+		systemPrompt = withSystemNote(systemPrompt, searchNote)
+	}
 	build := func(system string) []service.ChatMessage {
 		return assembleMessages(system, history, guardedMsg, images, now)
 	}
@@ -298,8 +335,8 @@ func (m *Manager) askAIWithHistory(userID uint, cfg *models.AIReplyConfig, histo
 			model := service.EffectiveModel(conn, "")
 			// Pencarian web hanya bila config memintanya DAN provider mendukung
 			// (Z.AI/Anthropic); selain itu diabaikan, jawaban tetap dari model.
-			webSearch := cfg.WebSearch && service.WebSearchSupported(provider)
-			if cfg.WebSearch && !webSearch {
+			webSearch := cfg.WebSearch && !serverSearch && service.WebSearchSupported(provider)
+			if cfg.WebSearch && !serverSearch && !webSearch {
 				log.Warn().Uint("userID", userID).Str("provider", conn.Provider).
 					Msg("Cari di Web aktif tetapi provider tidak mendukung — diabaikan")
 			}

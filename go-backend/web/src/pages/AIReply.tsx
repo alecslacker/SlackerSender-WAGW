@@ -10,6 +10,7 @@ import { apiGet, apiPost, apiPut, apiDelete, apiPatch } from "@/lib/api";
 import { useLang } from "@/lib/i18n";
 import { useActiveDevice } from "@/hooks/use-active-device";
 import AIConnectionCard from "@/components/AIConnectionCard";
+import AISearchConnectionCard from "@/components/AISearchConnectionCard";
 
 interface AIReplyConfig {
   id: number;
@@ -62,7 +63,12 @@ interface AIStatus {
   configured?: boolean;
   provider?: string;
   model?: string;
+  // Pencarian bawaan provider (cadangan): hanya Z.AI/Anthropic.
   webSearchSupported?: boolean;
+  // Pencarian lewat penyedia terpisah (server): ada koneksi aktif yang LULUS uji.
+  serverSearchReady?: boolean;
+  // Hasil "Cek Gambar" untuk model tersimpan ("" = belum dicek).
+  visionStatus?: "yes" | "no" | "";
 }
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
@@ -282,6 +288,11 @@ export default function AIReply({ embedded = false }: { embedded?: boolean }) {
     } catch (e: any) { toast.error(e.message || t("aiReply.deleteError")); }
   };
 
+  // Toggle "Cari di Web" boleh dinyalakan hanya bila ada jalur pencarian yang LULUS uji:
+  // penyedia terpisah (server) ATAU pencarian bawaan provider (Z.AI/Anthropic).
+  // status belum termuat (null) = jangan mengunci (hindari kilatan terkunci).
+  const canEnableSearch = status == null || !!status.serverSearchReady || status.webSearchSupported === true;
+
   const sourceLabel = (s: string) =>
     s === "faq" ? t("aiReply.sourceFaq")
     : s === "llm" ? t("aiReply.sourceLlm")
@@ -292,6 +303,7 @@ export default function AIReply({ embedded = false }: { embedded?: boolean }) {
   return (
     <div className="space-y-4">
       <AIConnectionCard onChanged={load} />
+      <AISearchConnectionCard onChanged={load} />
       <div className={`flex gap-3 sm:flex-row sm:items-center ${embedded ? "justify-end" : "flex-col sm:justify-between"}`}>
         {!embedded && (
           <div>
@@ -549,25 +561,28 @@ export default function AIReply({ embedded = false }: { embedded?: boolean }) {
               </div>
               <Toggle checked={readImages} label={t("aiReply.readImages")} onToggle={setReadImages} />
             </div>
+            {readImages && status?.visionStatus === "no" && (
+              <p className="-mt-2 text-xs text-amber-500">{t("aiReply.readImagesNoVision")}</p>
+            )}
             <div className="flex items-center justify-between gap-2">
               <div>
                 <p className="text-sm font-medium">{t("aiReply.webSearch")}</p>
                 <p className="text-xs text-muted-foreground">{t("aiReply.webSearchHint")}</p>
-                {status?.webSearchSupported === false && (
-                  <p className="mt-1 text-xs text-amber-500">{t("aiReply.webSearchUnsupported")}</p>
+                {!canEnableSearch && (
+                  <p className="mt-1 text-xs text-amber-500">{t("aiReply.webSearchNeedsCheck")}</p>
                 )}
               </div>
-              {/* Provider tak mendukung: toggle BOLEH dimatikan (agar nilai lama
-                  tidak menyala diam-diam saat pindah ke Z.AI/Anthropic), tapi tidak
-                  bisa dinyalakan. */}
+              {/* Dikunci sampai ada jalur pencarian yang LULUS uji (penyedia terpisah,
+                  atau bawaan provider Z.AI/Anthropic). Tetap boleh DIMATIKAN agar nilai
+                  lama tak menyala diam-diam; tidak bisa dinyalakan tanpa uji lulus. */}
               <Toggle
                 checked={webSearch}
                 label={t("aiReply.webSearch")}
                 onToggle={(v) => {
-                  if (v && status?.webSearchSupported === false) return;
+                  if (v && !canEnableSearch) return;
                   setWebSearch(v);
                 }}
-                disabled={status?.webSearchSupported === false && !webSearch}
+                disabled={!canEnableSearch && !webSearch}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">

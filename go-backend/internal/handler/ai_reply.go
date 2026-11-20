@@ -98,7 +98,9 @@ func createAIReplyConfig(db *gorm.DB) gin.HandlerFunc {
 		if req.ContextMessages != nil {
 			contextMessages = *req.ContextMessages
 		}
-		readImages := false
+		// Config BARU membaca gambar secara default (kemampuan model diuji lewat
+		// "Cek Gambar"; bila tak mendukung, bot menjawab jujur). Config lama tidak diubah.
+		readImages := true
 		if req.ReadImages != nil {
 			readImages = *req.ReadImages
 		}
@@ -196,20 +198,32 @@ func toggleAIReplyConfig(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
+// serverSearchReady: user punya koneksi pencarian AKTIF yang LULUS uji untuk
+// penyedianya sekarang (sama persis dengan syarat di whatsapp.webSearchNote).
+func serverSearchReady(udb *gorm.DB, userID uint) bool {
+	c := service.SearchConnectionForUser(udb, userID)
+	return c != nil && c.SearchChecked() && c.SearchStatus == models.CapabilityYes
+}
+
 // aiReplyStatus melaporkan status AI untuk user: koneksi miliknya bila ada,
 // sonst backend AI global (legacy).
 func aiReplyStatus(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := middleware.GetUserID(c)
 		udb := rls.Scoped(db, userID)
+		// Pencarian lewat penyedia terpisah (server) TIDAK bergantung pada model:
+		// UI mengaktifkan toggle bila penyedia ini lulus uji. Dikirim di kedua cabang.
+		serverSearch := serverSearchReady(udb, userID)
 		if conn := service.ConnectionForUser(udb, userID); conn != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"reachable":  true,
 				"configured": true,
 				"provider":   conn.Provider,
 				"model":      conn.Model,
-				// UI menonaktifkan toggle "Cari di Web" bila provider tak mendukung.
+				// Pencarian bawaan provider (cadangan rilis 23): hanya Z.AI/Anthropic.
 				"webSearchSupported": service.WebSearchSupported(service.AIProvider(conn.Provider)),
+				"serverSearchReady":  serverSearch,
+				"visionStatus":       visionStatusFor(conn),
 				"detail":             "Koneksi AI milik Anda (" + conn.Provider + " / " + conn.Model + ")",
 			})
 			return
@@ -218,7 +232,8 @@ func aiReplyStatus(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{
 			"reachable":          ok,
 			"configured":         false,
-			"webSearchSupported": false, // backend AI global tidak diberi pencarian web
+			"webSearchSupported": false, // backend AI global tidak diberi pencarian bawaan provider
+			"serverSearchReady":  serverSearch,
 			"detail":             detail,
 		})
 	}

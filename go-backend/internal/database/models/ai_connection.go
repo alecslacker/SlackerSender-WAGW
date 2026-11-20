@@ -11,17 +11,22 @@ import (
 // fitur AI (auto-reply per device, tombol "Hasilkan Balasan AI" di Live Chat,
 // CS bot) milik user tersebut.
 type AIConnection struct {
-	ID        uint           `gorm:"primaryKey" json:"id"`
-	UserID    uint           `gorm:"uniqueIndex;not null" json:"userId"`
-	Provider  string         `gorm:"size:20;not null;default:openai" json:"provider"` // openai, gemini, anthropic, custom
-	Model     string         `gorm:"size:100;not null" json:"model"`
-	BaseURL   string         `gorm:"size:255" json:"baseUrl"`      // hanya untuk provider=custom (OpenAI-compatible)
-	APIKeyEnc string         `gorm:"type:text;not null" json:"-"`  // terenkripsi AES-GCM, tidak pernah dikirim ke frontend
-	KeyHint   string         `gorm:"size:12" json:"keyHint"`        // 4 karakter terakhir key, untuk ditampilkan di UI
-	IsActive  bool           `gorm:"default:true" json:"isActive"`
-	CreatedAt time.Time      `json:"createdAt"`
-	UpdatedAt time.Time      `json:"updatedAt"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	ID        uint   `gorm:"primaryKey" json:"id"`
+	UserID    uint   `gorm:"uniqueIndex;not null" json:"userId"`
+	Provider  string `gorm:"size:20;not null;default:openai" json:"provider"` // openai, gemini, anthropic, custom
+	Model     string `gorm:"size:100;not null" json:"model"`
+	BaseURL   string `gorm:"size:255" json:"baseUrl"`     // hanya untuk provider=custom (OpenAI-compatible)
+	APIKeyEnc string `gorm:"type:text;not null" json:"-"` // terenkripsi AES-GCM, tidak pernah dikirim ke frontend
+	KeyHint   string `gorm:"size:12" json:"keyHint"`      // 4 karakter terakhir key, untuk ditampilkan di UI
+	IsActive  bool   `gorm:"default:true" json:"isActive"`
+	// Hasil uji kemampuan membaca gambar (vision). Berlaku HANYA bila VisionModel
+	// sama dengan Model sekarang — ganti model = otomatis "belum dicek".
+	VisionStatus    string         `gorm:"size:10" json:"visionStatus"` // "" = belum dicek | "yes" | "no"
+	VisionModel     string         `gorm:"size:100" json:"visionModel"` // model saat dicek
+	VisionCheckedAt *time.Time     `json:"visionCheckedAt"`
+	CreatedAt       time.Time      `json:"createdAt"`
+	UpdatedAt       time.Time      `json:"updatedAt"`
+	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`
 
 	User User `gorm:"foreignKey:UserID" json:"-"`
 }
