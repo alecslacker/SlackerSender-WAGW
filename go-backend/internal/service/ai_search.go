@@ -25,11 +25,14 @@ import (
 const (
 	SearchZAI     = "zai"
 	SearchBrave   = "brave"
+	SearchTavily  = "tavily"
+	SearchBocha   = "bocha"
+	SearchQuerit  = "querit"
 	SearchSearXNG = "searxng"
 )
 
 // ValidSearchProviders: urutan tampil di UI.
-var ValidSearchProviders = []string{SearchZAI, SearchBrave, SearchSearXNG}
+var ValidSearchProviders = []string{SearchZAI, SearchBrave, SearchTavily, SearchBocha, SearchQuerit, SearchSearXNG}
 
 // IsValidSearchProvider memeriksa nama penyedia.
 func IsValidSearchProvider(p string) bool {

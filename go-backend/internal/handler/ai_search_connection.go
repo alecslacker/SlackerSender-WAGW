@@ -116,7 +116,7 @@ func upsertAISearchConnection(db *gorm.DB) gin.HandlerFunc {
 		}
 		provider := strings.ToLower(strings.TrimSpace(req.Provider))
 		if !service.IsValidSearchProvider(provider) {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Penyedia pencarian tidak dikenal. Pilih: zai, brave, searxng."})
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Penyedia pencarian tidak dikenal. Pilih: zai, brave, tavily, bocha, querit, searxng."})
 			return
 		}
 		base, msg := normalizeSearchBase(provider, req.BaseURL)

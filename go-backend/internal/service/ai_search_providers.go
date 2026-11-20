@@ -14,12 +14,16 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
 const (
-	braveSearchURL = "https://api.search.brave.com/res/v1/web/search"
-	searchBodyMax  = 1 << 20 // 1 MB
+	braveSearchURL  = "https://api.search.brave.com/res/v1/web/search"
+	tavilySearchURL = "https://api.tavily.com/search"         // docs.tavily.com/api-reference/endpoint/search
+	bochaSearchURL  = "https://api.bochaai.com/v1/web-search" // kode resmi github.com/BochaAI (bocha-search-mcp)
+	queritSearchURL = "https://api.querit.ai/v1/search"       // querit.ai/en/docs + SDK resmi querit-python
+	searchBodyMax   = 1 << 20                                 // 1 MB
 )
 
 // SearcherConfig: konfigurasi satu penyedia. BaseURL hanya untuk SearXNG; untuk
@@ -40,7 +44,7 @@ func NewSearcher(cfg SearcherConfig) (Searcher, error) {
 		cfg.HTTPClient = aiHTTPClient()
 	}
 	switch cfg.Provider {
-	case SearchZAI, SearchBrave:
+	case SearchZAI, SearchBrave, SearchTavily, SearchBocha, SearchQuerit:
 		if strings.TrimSpace(cfg.APIKey) == "" {
 			return nil, fmt.Errorf("API key penyedia pencarian belum diisi")
 		}
@@ -80,6 +84,21 @@ func (h *httpSearcher) Search(ctx context.Context, query string) ([]SearchResult
 			req.Header.Set("X-Subscription-Token", h.cfg.APIKey)
 			req.Header.Set("Accept", "application/json")
 		}
+	case SearchTavily:
+		// Bentuk persis dari docs.tavily.com/api-reference/endpoint/search.
+		req, err = h.postJSON(ctx, tavilySearchURL, map[string]interface{}{
+			"query": query, "max_results": maxSearchResults, "search_depth": "basic", "topic": "general",
+		})
+	case SearchBocha:
+		// Bentuk persis dari kode resmi BochaAI (bocha-search-mcp / open-webui-Bocha).
+		req, err = h.postJSON(ctx, bochaSearchURL, map[string]interface{}{
+			"query": query, "summary": true, "freshness": "noLimit", "count": maxSearchResults,
+		})
+	case SearchQuerit:
+		// Bentuk persis dari querit.ai/en/docs (POST /v1/search, Bearer).
+		req, err = h.postJSON(ctx, queritSearchURL, map[string]interface{}{
+			"query": query, "count": maxSearchResults,
+		})
 	case SearchSearXNG:
 		base := strings.TrimRight(h.cfg.BaseURL, "/")
 		req, err = http.NewRequestWithContext(ctx, http.MethodGet, base+"/search?"+url.Values{"q": {query}, "format": {"json"}}.Encode(), nil)
@@ -100,6 +119,18 @@ func (h *httpSearcher) Search(ctx context.Context, query string) ([]SearchResult
 		return nil, fmt.Errorf("search error %d: %s", resp.StatusCode, shortErr(string(raw)))
 	}
 	return parseSearchResponse(h.cfg.Provider, raw)
+}
+
+// postJSON menyusun POST JSON ber-Bearer (Tavily, BoCha, Querit memakai bentuk yang sama).
+func (h *httpSearcher) postJSON(ctx context.Context, def string, payload map[string]interface{}) (*http.Request, error) {
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, h.endpoint(def), bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+h.cfg.APIKey)
+	return req, nil
 }
 
 func (h *httpSearcher) endpoint(def string) string {
@@ -132,6 +163,74 @@ func parseSearchResponse(provider string, raw []byte) ([]SearchResult, error) {
 				s = x.Summary
 			}
 			if n, ok := normalizeResult(x.Title, link, s, x.Media); ok {
+				out = append(out, n)
+			}
+		}
+	case SearchTavily:
+		// results[] {title, url, content, score} — docs.tavily.com
+		var r struct {
+			Results []struct{ Title, URL, Content string } `json:"results"`
+		}
+		if err := json.Unmarshal(raw, &r); err != nil {
+			return nil, fmt.Errorf("respons Tavily tidak dapat dibaca")
+		}
+		for _, x := range r.Results {
+			if n, ok := normalizeResult(x.Title, x.URL, x.Content, ""); ok {
+				out = append(out, n)
+			}
+		}
+	case SearchBocha:
+		// data.webPages.value[] {name, url, snippet, summary, siteName} — kode resmi BochaAI.
+		// Pembungkus level atas belum terbukti live; webPages tanpa "data" juga diterima.
+		type bochaPages struct {
+			Value []struct {
+				Name, URL, Snippet, Summary string
+				SiteName                    string `json:"siteName"`
+			} `json:"value"`
+		}
+		var r struct {
+			Data struct {
+				WebPages bochaPages `json:"webPages"`
+			} `json:"data"`
+			WebPages bochaPages `json:"webPages"`
+		}
+		if err := json.Unmarshal(raw, &r); err != nil {
+			return nil, fmt.Errorf("respons BoCha tidak dapat dibaca")
+		}
+		items := r.Data.WebPages.Value
+		if len(items) == 0 {
+			items = r.WebPages.Value
+		}
+		for _, x := range items {
+			s := x.Summary
+			if s == "" {
+				s = x.Snippet
+			}
+			if n, ok := normalizeResult(x.Name, x.URL, s, x.SiteName); ok {
+				out = append(out, n)
+			}
+		}
+	case SearchQuerit:
+		// results.result[] {url, title, snippet, site_name}; galat bisa datang sebagai
+		// error_code/error_msg di badan (docs Querit) — kode >= 400 dianggap galat.
+		var r struct {
+			ErrorCode json.RawMessage `json:"error_code"`
+			ErrorMsg  string          `json:"error_msg"`
+			Results   struct {
+				Result []struct {
+					URL, Title, Snippet string
+					SiteName            string `json:"site_name"`
+				} `json:"result"`
+			} `json:"results"`
+		}
+		if err := json.Unmarshal(raw, &r); err != nil {
+			return nil, fmt.Errorf("respons Querit tidak dapat dibaca")
+		}
+		if code, _ := strconv.Atoi(strings.Trim(string(r.ErrorCode), `" `)); code >= 400 {
+			return nil, fmt.Errorf("search error %d: %s", code, shortErr(r.ErrorMsg))
+		}
+		for _, x := range r.Results.Result {
+			if n, ok := normalizeResult(x.Title, x.URL, x.Snippet, x.SiteName); ok {
 				out = append(out, n)
 			}
 		}

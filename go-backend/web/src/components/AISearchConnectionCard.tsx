@@ -37,6 +37,9 @@ interface SearchTest {
 const PROVIDERS = [
   { value: "brave", label: "Brave Search" },
   { value: "zai", label: "Z.ai Coding Plan (MCP)" },
+  { value: "tavily", label: "Tavily" },
+  { value: "bocha", label: "BoCha (博查)" },
+  { value: "querit", label: "Querit" },
   { value: "searxng", label: "SearXNG (instance sendiri)" },
 ];
 
@@ -215,7 +218,13 @@ export default function AISearchConnectionCard({ onChanged }: { onChanged?: () =
                 ? t("aiReply.searchSearxHint")
                 : provider === "zai"
                   ? t("aiReply.searchZaiHint")
-                  : t("aiReply.searchKeyHint")}
+                  : provider === "tavily"
+                    ? t("aiReply.searchTavilyHint")
+                    : provider === "bocha"
+                      ? t("aiReply.searchBochaHint")
+                      : provider === "querit"
+                        ? t("aiReply.searchQueritHint")
+                        : t("aiReply.searchKeyHint")}
             </p>
           </div>
         )}
