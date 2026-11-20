@@ -22,6 +22,7 @@ package whatsapp
 
 import (
 	"strings"
+	"time"
 
 	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/database/models"
 	"github.com/alecslacker/SlackerSender-WAGW/go-backend/internal/service"
@@ -268,6 +269,15 @@ func composeAIPrompt(systemPrompt, userText string, injectionGuard, withImage bo
 	return system, user
 }
 
+// assembleMessages menyusun daftar pesan ke LLM: satu system prompt (dengan baris
+// waktu di akhir), riwayat yang sudah dinormalkan, lalu pesan user terakhir
+// (membawa gambar bila ada). Dipisah agar urutan & baris waktu bisa dites.
+func assembleMessages(system string, history []service.ChatMessage, userMsg string, images []service.ChatImage, now time.Time) []service.ChatMessage {
+	msgs := []service.ChatMessage{{Role: "system", Content: withClock(system, now)}}
+	msgs = append(msgs, service.NormalizeChatHistory(history)...)
+	return append(msgs, service.ChatMessage{Role: "user", Content: userMsg, Images: images})
+}
+
 // askAIWithHistory sama dengan askAIForUser, ditambah riwayat percakapan
 // (terurut kronologis, tanpa system prompt) sebagai konteks sebelum pesan
 // terbaru, dan gambar opsional yang menempel di pesan user terakhir.
@@ -275,10 +285,11 @@ func composeAIPrompt(systemPrompt, userText string, injectionGuard, withImage bo
 // agar diterima semua provider.
 func (m *Manager) askAIWithHistory(userID uint, cfg *models.AIReplyConfig, history []service.ChatMessage, userMessage string, images []service.ChatImage) (string, error) {
 	systemPrompt, guardedMsg := composeAIPrompt(cfg.SystemPrompt, userMessage, cfg.InjectionGuard, len(images) > 0)
+	// Waktu diambil SEKALI per panggilan agar balasan awal dan ulangan (setelah
+	// penurunan fitur) memakai jam yang sama.
+	now := time.Now()
 	build := func(system string) []service.ChatMessage {
-		msgs := []service.ChatMessage{{Role: "system", Content: system}}
-		msgs = append(msgs, service.NormalizeChatHistory(history)...)
-		return append(msgs, service.ChatMessage{Role: "user", Content: guardedMsg, Images: images})
+		return assembleMessages(system, history, guardedMsg, images, now)
 	}
 
 	if conn := service.ConnectionForUser(m.db, userID); conn != nil {
@@ -339,5 +350,5 @@ func (m *Manager) askAIWithHistory(userID uint, cfg *models.AIReplyConfig, histo
 	}
 	// Fallback global (legacy AskAI) tidak mendukung riwayat multi-turn:
 	// kirim hanya system prompt + pesan terbaru.
-	return AskAI(m.db, systemPrompt, guardedMsg, images...)
+	return AskAI(m.db, withClock(systemPrompt, now), guardedMsg, images...)
 }
