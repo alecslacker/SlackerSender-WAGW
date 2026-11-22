@@ -146,6 +146,7 @@ export default {
     secretUpdateFail: "Failed to generate a new secret",
     connectFail: "Failed to start connection",
     pairFail: "Failed to request pairing code",
+    colName: "Device Name",
     colNumber: "Number",
     colWebhook: "Webhook URL",
     colRead: "Read",

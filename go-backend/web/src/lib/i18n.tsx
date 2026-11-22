@@ -160,6 +160,7 @@ const id = {
     secretUpdateFail: "Gagal membuat secret baru",
     connectFail: "Gagal memulai koneksi",
     pairFail: "Gagal meminta kode pairing",
+    colName: "Nama Perangkat",
     colNumber: "Nomor",
     colWebhook: "Webhook URL",
     colRead: "Read",

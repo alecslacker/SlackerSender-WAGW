@@ -778,6 +778,9 @@ export default function Dashboard() {
                   <thead>
                     <tr className="border-b border-border text-left">
                       <th className="py-2 pr-4 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        {t("dashboard.colName")}
+                      </th>
+                      <th className="py-2 pr-4 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                         {t("dashboard.colNumber")}
                       </th>
                       <th className="py-2 pr-4 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -812,6 +815,14 @@ export default function Dashboard() {
                         key={d.id}
                         className="border-b border-border last:border-0"
                       >
+                        <td className="py-3 pr-3 max-w-[130px]">
+                          <span
+                            className="block truncate font-medium text-foreground"
+                            title={d.name}
+                          >
+                            {d.name || `#${d.id}`}
+                          </span>
+                        </td>
                         <td className="py-3 pr-4 font-mono text-[13px] text-foreground whitespace-nowrap">
                           {d.phone || "-"}
                         </td>
