@@ -11,8 +11,10 @@ export default function NotFound() {
         <p className="text-sm text-muted-foreground mt-2">
           {t("notFound.message")}
         </p>
-        <Link href="/">
-          <Button variant="outline" className="mt-6">
+        {/* Tombol level blok (flex) di dalam tautan inline tidak tergeser oleh text-center;
+            tautan dibuat inline-block agar menyusut selebar tombol dan ikut ke tengah. */}
+        <Link href="/" className="mt-6 inline-block">
+          <Button variant="outline">
             {t("notFound.backToDashboard")}
           </Button>
         </Link>

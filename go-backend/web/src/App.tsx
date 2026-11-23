@@ -143,6 +143,10 @@ function AppRouter() {
         <Route path="/dashboard">
           <Redirect to="/" />
         </Route>
+        {/* Tautan lama "/devices" (notifikasi perangkat) — tabel perangkat ada di Dashboard */}
+        <Route path="/devices">
+          <Redirect to="/" />
+        </Route>
         <Route path="/send">
           <ProtectedRoute><Send /></ProtectedRoute>
         </Route>
